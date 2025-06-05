@@ -207,7 +207,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600">
-                    Use session cookies to connect with platforms that don't offer official APIs, like LinkedIn and
+                    Use session cookies to connect with platforms that don&apos;t offer official APIs, like LinkedIn and
                     Instagram.
                   </p>
                 </CardContent>
@@ -288,8 +288,8 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-700">
-                  "ContactSync has been a game-changer for managing my professional network. I can finally keep all my
-                  contacts in sync across platforms!"
+                  &quot;ContactSync has been a game-changer for managing my professional network. I can finally keep all my
+                  contacts in sync across platforms!&quot;
                 </p>
                 <div className="flex mt-4">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -321,8 +321,8 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-700">
-                  "The duplicate detection feature saved me hours of manual work. Now I have a clean contact list
-                  without any duplicates!"
+                  &quot;The duplicate detection feature saved me hours of manual work. Now I have a clean contact list
+                  without any duplicates!&quot;
                 </p>
                 <div className="flex mt-4">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -354,8 +354,8 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-gray-700">
-                  "Being able to sync LinkedIn contacts without an official API is incredible. This tool is essential
-                  for any sales professional!"
+                  &quot;Being able to sync LinkedIn contacts without an official API is incredible. This tool is essential
+                  for any sales professional!&quot;
                 </p>
                 <div className="flex mt-4">
                   {[1, 2, 3, 4, 5].map((star) => (

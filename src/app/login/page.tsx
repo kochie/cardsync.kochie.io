@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const router = useRouter()
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
 
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
@@ -41,7 +41,7 @@ export default function LoginPage() {
         },
       });
 
-      router.push("/");
+      router.push("/dashboard");
     } catch (e) {
       setError((e as Error).message);
     }
@@ -242,7 +242,7 @@ export default function LoginPage() {
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link href="/signup" className="font-medium text-purple-600 hover:text-purple-800">
                     Sign up
                   </Link>

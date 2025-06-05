@@ -180,10 +180,10 @@ export default function AddConnectionPage() {
                   <h3 className="text-sm font-medium">How to get your session cookie:</h3>
                   <ol className="text-sm text-muted-foreground space-y-2 list-decimal pl-4">
                     <li>Log in to the platform in your browser</li>
-                    <li>Open developer tools (F12 or right-click and select "Inspect")</li>
-                    <li>Go to the "Application" or "Storage" tab</li>
-                    <li>Find "Cookies" in the sidebar and select the website</li>
-                    <li>Look for a cookie named something like "session" or "auth"</li>
+                    <li>Open developer tools (F12 or right-click and select &quot;Inspect&quot;)</li>
+                    <li>Go to the &quot;Application&quot; or &quot;Storage&quot; tab</li>
+                    <li>Find &quot;Cookies&quot; in the sidebar and select the website</li>
+                    <li>Look for a cookie named something like &quot;session&quot; or &quot;auth&quot;</li>
                     <li>Copy the value and paste it above</li>
                   </ol>
                 </div>

@@ -22,15 +22,12 @@ export default function SignupPage() {
   const [confirmation, setConfirmation] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false)
   const router = useRouter()
-  const [error, setError] = useState("");
 
   async function handleRegister(event: FormEvent) {
     event.preventDefault();
 
-    setError("");
 
     if (password !== confirmation) {
-      setError("Passwords don't match");
       return;
     }
 
@@ -38,7 +35,7 @@ export default function SignupPage() {
       await createUserWithEmailAndPassword(getAuth(app), email, password);
       router.push("/login");
     } catch (e) {
-      setError((e as Error).message);
+      console.error("Error creating user:", e);
     }
   }
 

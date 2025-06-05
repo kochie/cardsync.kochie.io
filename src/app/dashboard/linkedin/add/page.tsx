@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,19 +8,45 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, ChevronRight, Linkedin, Users } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Image from "next/image"
+import { Input } from "@/components/ui/input"
+import cookie from "cookie"
+import { addLinkedinCookie } from "@/actions/addLinkedinCreds"
 
 export default function LinkedInConnectionPage() {
   const [cookieValue, setCookieValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [jsessionValue, setJsessionValue] = useState("")
+  const [linkedinSessionValue, setLinkedinSessionValue] = useState("")
+  const [connectionName, setConnectionName] = useState("")
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     setIsSubmitting(true)
     // Simulate API call
-    setTimeout(() => {
+    try {
+      addLinkedinCookie(cookieValue, connectionName)
+    } finally {
       setIsSubmitting(false)
-      // Redirect would happen here in a real app
-    }, 2000)
+    }
   }
+
+  useEffect(() => {
+    const cookies = cookie.parse(cookieValue)
+    const sessionId = cookies["JSESSIONID"]
+    if (sessionId) {
+      setJsessionValue(sessionId)
+    } else {
+      setJsessionValue("")
+    }
+
+    const liAt = cookies["li_at"]
+    if (liAt) {
+      setLinkedinSessionValue(liAt)
+    } else {
+      setLinkedinSessionValue("")
+    }
+
+  }, [cookieValue])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -64,7 +90,7 @@ export default function LinkedInConnectionPage() {
           <CardHeader>
             <CardTitle>LinkedIn Session Cookie Authentication</CardTitle>
             <CardDescription>
-              LinkedIn doesn't provide an official API for contacts. We'll use your session cookie to sync your
+              LinkedIn doesn&apos;t provide an official API for contacts. We&apos;ll use your session cookie to sync your
               connections.
             </CardDescription>
           </CardHeader>
@@ -88,18 +114,43 @@ export default function LinkedInConnectionPage() {
               />
             </div>
 
+            <div>
+              <Label htmlFor="jsession-cookie" className="text-sm font-medium">JSESSION ID</Label>
+              <Input value={jsessionValue} readOnly></Input>
+            </div>
+
+            <div>
+              <Label htmlFor="linkedin-cookie" className="text-sm font-medium">LinkedIn Session ID</Label>
+              <Input value={linkedinSessionValue} readOnly></Input>
+            </div>
+
+            <div>
+              <Label htmlFor="connection-name" className="text-sm font-medium">Connection Name</Label>
+              <Input
+                id="connection-name"
+                placeholder="Enter a name for this connection"
+                className=""
+                value={connectionName}
+                onChange={(e) => setConnectionName(e.target.value)}
+              />
+            </div>
+
+            
+
             <div className="space-y-2">
               <h3 className="text-sm font-medium">How to get your LinkedIn session cookie:</h3>
               <ol className="text-sm text-muted-foreground space-y-2 list-decimal pl-4">
                 <li>Log in to LinkedIn in your browser</li>
-                <li>Open developer tools (F12 or right-click and select "Inspect")</li>
-                <li>Go to the "Application" or "Storage" tab</li>
-                <li>Find "Cookies" in the sidebar and select "www.linkedin.com"</li>
-                <li>Look for a cookie named "li_at"</li>
+                <li>Open developer tools (F12 or right-click and select &quot;Inspect&quot;)</li>
+                <li>Go to the &quot;Application&quot; or &quot;Storage&quot; tab</li>
+                <li>Find &quot;Cookies&quot; in the sidebar and select &quot;www.linkedin.com&quot;</li>
+                <li>Look for a cookie named &quot;li_at&quot;</li>
                 <li>Copy the value and paste it above</li>
               </ol>
               <div className="mt-4">
-                <img
+                <Image
+                  width={500}
+                  height={200}
                   src="/placeholder.svg?height=200&width=500"
                   alt="LinkedIn cookie screenshot"
                   className="border rounded-md"

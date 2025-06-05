@@ -62,11 +62,11 @@ export default function ForgotPasswordPage() {
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
                   <p className="text-gray-600 mt-2">
-                    We've sent a password reset link to <span className="font-medium">{email}</span>
+                    We&apos;ve sent a password reset link to <span className="font-medium">{email}</span>
                   </p>
                   <div className="mt-6">
                     <p className="text-sm text-gray-600 mb-4">
-                      Didn't receive the email? Check your spam folder or try again.
+                      Didn&apos;t receive the email? Check your spam folder or try again.
                     </p>
                     <Button variant="outline" className="w-full" onClick={() => setIsSubmitted(false)}>
                       Try again
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                 <>
                   <h1 className="text-2xl font-bold text-gray-900">Forgot your password?</h1>
                   <p className="text-gray-600 mt-1">
-                    Enter your email address and we'll send you a link to reset your password.
+                    Enter your email address and we&apos;ll send you a link to reset your password.
                   </p>
 
                   <form onSubmit={handleSubmit} className="mt-6 space-y-4">
