@@ -46,7 +46,17 @@ export function Avatar({
           </text>
         </svg>
       )}
-      {src && <Image className="size-full" src={src} alt={alt} />}
+      {src && 
+      <Image
+          src={src}
+          alt={alt}
+          width={40}
+          height={40}
+          className={clsx(
+            'object-cover',
+            square ? 'rounded-[var(--avatar-radius,20%)]' : 'rounded-full'
+          )}
+        />}
     </span>
   )
 }
