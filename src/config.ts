@@ -16,9 +16,12 @@ export const serverConfig = {
     clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
     privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n") ?? "",
   },
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
 };
 
 export const clientConfig = {
+  storageBucket: "cardsync-ea53f.firebasestorage.app",
+
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

@@ -3,15 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { ArrowLeft, ChevronRight, Linkedin, Users } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Image from "next/image"
 import { Input } from "@/components/ui/input"
 import cookie from "cookie"
 import { addLinkedinCookie } from "@/actions/addLinkedinCreds"
+import { Label } from "@/components/ui/fieldset"
 
 export default function LinkedInConnectionPage() {
   const [cookieValue, setCookieValue] = useState("")
@@ -76,7 +75,7 @@ export default function LinkedInConnectionPage() {
       <main className="flex-1 container py-6">
         <div className="flex items-center gap-2 mb-6">
           <Link href="/dashboard/connections/add">
-            <Button variant="ghost" size="icon">
+            <Button>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -86,16 +85,16 @@ export default function LinkedInConnectionPage() {
           </h1>
         </div>
 
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle>LinkedIn Session Cookie Authentication</CardTitle>
-            <CardDescription>
+        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow border border-gray-200">
+          <div className="p-6 border-b">
+            <div className="text-xl font-semibold mb-1">LinkedIn Session Cookie Authentication</div>
+            <div className="text-gray-500">
               LinkedIn doesn&apos;t provide an official API for contacts. We&apos;ll use your session cookie to sync your
               connections.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <Alert onClose={() => {}}>
               <AlertTitle>Your data is secure</AlertTitle>
               <AlertDescription>
                 Your session cookie is encrypted and only used to sync your LinkedIn connections. We never store your
@@ -135,8 +134,6 @@ export default function LinkedInConnectionPage() {
               />
             </div>
 
-            
-
             <div className="space-y-2">
               <h3 className="text-sm font-medium">How to get your LinkedIn session cookie:</h3>
               <ol className="text-sm text-muted-foreground space-y-2 list-decimal pl-4">
@@ -157,16 +154,16 @@ export default function LinkedInConnectionPage() {
                 />
               </div>
             </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
+          </div>
+          <div className="flex justify-between items-center p-6 border-t">
             <Link href="/dashboard/connections/add">
-              <Button variant="outline">Cancel</Button>
+              <Button outline>Cancel</Button>
             </Link>
             <Button onClick={handleConnect} disabled={!cookieValue.trim() || isSubmitting}>
               {isSubmitting ? "Connecting..." : "Connect LinkedIn"}
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </main>
     </div>
   )

@@ -1,18 +1,10 @@
-"use client"
+"use client";
 
 import { useActionState, useEffect, useState } from "react";
 import { onSnapshot, getFirestore, collection } from "firebase/firestore";
 import { app } from "@/firebase";
 import { Badge, Plus, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthProvider";
 import { deleteCardDavAction } from "@/actions/deleteCardDav";
@@ -30,33 +22,12 @@ interface CardDavConnection {
 }
 
 export default function CardDavConnection() {
-  const router = useRouter();
-
   return (
     <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>CardDAV Accounts</CardTitle>
-          <CardDescription>
-            Manage your CardDAV server connections for contact synchronization
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* CardDAV accounts list will be rendered here */}
-            <CardDAVAccountsList />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() => router.push("/dashboard/carddav/add")}
-            className="cursor-pointer"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add CardDAV Account
-          </Button>
-        </CardFooter>
-      </Card>
+      <div className="space-y-4">
+        {/* CardDAV accounts list will be rendered here */}
+        <CardDAVAccountsList />
+      </div>
     </div>
   );
 }
@@ -109,7 +80,7 @@ function CardDAVAccountsList() {
             </div>
             <div className="ml-4 flex gap-2">
               <SyncButton id={account.id} />
-              <Button variant="outline" size="sm" className="cursor-pointer">
+              <Button outline className="cursor-pointer">
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
               </Button>
@@ -141,8 +112,7 @@ function SyncButton({ id }: { id: string }) {
   return (
     <form action={action}>
       <Button
-        variant="outline"
-        size="sm"
+        outline
         type="submit"
         disabled={pending}
         className="cursor-pointer"
@@ -163,8 +133,6 @@ function SyncButton({ id }: { id: string }) {
   );
 }
 
-
-
 function DeleteButton({ id }: { id: string }) {
   const [, action, pending] = useActionState(
     deleteCardDavAction.bind(null, id),
@@ -173,13 +141,7 @@ function DeleteButton({ id }: { id: string }) {
 
   return (
     <form action={action}>
-      <Button
-        variant="destructive"
-        size="sm"
-        type="submit"
-        disabled={pending}
-        className="cursor-pointer"
-      >
+      <Button type="submit" disabled={pending} className="cursor-pointer">
         {pending ? (
           <>
             <RefreshCw className="h-4 w-4 animate-spin" />

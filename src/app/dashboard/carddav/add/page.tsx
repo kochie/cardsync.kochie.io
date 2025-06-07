@@ -4,27 +4,15 @@ import type React from "react";
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
+import { Label } from "@/components/ui/fieldset";
+
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
@@ -34,12 +22,7 @@ import {
   Shield,
   Users,
 } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+
 import { createCardDavAction } from "@/actions/createCardDav";
 
 const presets = [
@@ -62,10 +45,6 @@ const presets = [
 ];
 
 export default function AddCardDAVPage() {
-  const router = useRouter();
-
-  const [useSSL, setUseSSL] = useState(true);
-
   const [,formAction, pending] = useActionState(
     createCardDavAction,
     {
@@ -100,261 +79,269 @@ export default function AddCardDAVPage() {
       <main className="flex-1 container py-6 mx-auto">
         <div className="flex items-center gap-2 mb-6">
           <Link href="/dashboard">
-            <Button variant="ghost" size="icon">
+            <Button>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <h1 className="text-2xl font-bold">Add CardDAV Account</h1>
         </div>
 
-        <Tabs defaultValue="manual" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="manual">Manual Setup</TabsTrigger>
-            <TabsTrigger value="presets">Common Presets</TabsTrigger>
-          </TabsList>
+        {/* Tabs replaced with custom tab logic */}
+        <CardDavTabs formAction={formAction} pending={pending} presets={presets} />
+      </main>
+    </div>
+  );
+}
 
-          <TabsContent value="manual">
-            <Card>
-              <form action={formAction}>
-                <CardHeader>
-                  <CardTitle>CardDAV Account Details</CardTitle>
-                  <CardDescription>
-                    Enter your CardDAV server details to sync contacts with your
-                    devices and services
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Account Name</Label>
-                      <Input
-                        name="name"
-                        id="name"
-                        placeholder="My CardDAV Account"
-                        required
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        A friendly name to identify this account
-                      </p>
-                    </div>
+interface CardDavTabsProps {
+  formAction: (payload: FormData) => void;
+  pending: boolean;
+  presets: Array<{ name: string; server: string; path?: string; ssl?: boolean }>;
+}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="server">Server URL</Label>
-                      <div className="flex items-center">
-                        <div className="flex items-center border rounded-l-md px-3 bg-muted">
-                          {useSSL ? (
-                            <>
-                              <Shield className="h-4 w-4 text-green-600 mr-1" />
-                              https://
-                            </>
-                          ) : (
-                            <>
-                              <Server className="h-4 w-4 text-amber-600 mr-1" />
-                              http://
-                            </>
-                          )}
-                        </div>
-                        <Input
-                          name="server"
-                          id="server"
-                          placeholder="carddav.example.com"
-                          className="rounded-l-none"
-                          required
-                        />
-                      </div>
+// Custom tab logic and content
+function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
+  const [tab, setTab] = useState<"manual" | "presets">("manual");
+
+  return (
+    <div className="w-full">
+      <div className="flex gap-2 mb-4">
+        <button
+          className={`px-4 py-2 rounded-t ${tab === "manual" ? "bg-white border-b-2 border-primary font-semibold" : "bg-gray-100"}`}
+          onClick={() => setTab("manual")}
+          id="manual-tab"
+        >
+          Manual Setup
+        </button>
+        <button
+          className={`px-4 py-2 rounded-t ${tab === "presets" ? "bg-white border-b-2 border-primary font-semibold" : "bg-gray-100"}`}
+          onClick={() => setTab("presets")}
+        >
+          Common Presets
+        </button>
+      </div>
+
+      {tab === "manual" && (
+        <div className="bg-white border rounded-xl shadow">
+          <form action={formAction}>
+            {/* CardHeader */}
+            <div className="p-6 border-b">
+              <div className="text-xl font-semibold mb-1">CardDAV Account Details</div>
+              <div className="text-gray-500">
+                Enter your CardDAV server details to sync contacts with your devices and services
+              </div>
+            </div>
+            {/* CardContent */}
+            <div className="p-6 space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Account Name</Label>
+                  <Input
+                    name="name"
+                    id="name"
+                    placeholder="My CardDAV Account"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    A friendly name to identify this account
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="server">Server URL</Label>
+                  <div className="flex items-center">
+                    <div className="flex items-center border rounded-l-md px-3 bg-muted">
+                      {presets[0].ssl ? (
+                        <>
+                          <Shield className="h-4 w-4 text-green-600 mr-1" />
+                          https://
+                        </>
+                      ) : (
+                        <>
+                          <Server className="h-4 w-4 text-amber-600 mr-1" />
+                          http://
+                        </>
+                      )}
                     </div>
+                    <Input
+                      name="server"
+                      id="server"
+                      placeholder="carddav.example.com"
+                      className="rounded-l-none"
+                      required
+                    />
                   </div>
+                </div>
+              </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
-                      <Input
-                        name="username"
-                        id="username"
-                        placeholder="username or email"
-                        required
-                      />
-                    </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    name="username"
+                    id="username"
+                    placeholder="username or email"
+                    required
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        name="password"
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        required
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Your password is encrypted and stored securely
-                      </p>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    name="password"
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Your password is encrypted and stored securely
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="syncFrequency">Sync Frequency</Label>
+                  <Select name="syncFrequency">
+                      <option value="manual">Manual only</option>
+                      <option value="hourly">Hourly</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="useSSL" className="block mb-2">
+                    Security
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      name="useSSL"
+                      id="useSSL"
+                      checked={presets[0].ssl}
+                    />
+                    <Label htmlFor="useSSL">
+                      Use SSL/TLS (recommended)
+                    </Label>
                   </div>
+                </div>
+              </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="syncFrequency">Sync Frequency</Label>
-                      <Select name="syncFrequency">
-                        <SelectTrigger id="syncFrequency">
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manual">Manual only</SelectItem>
-                          <SelectItem value="hourly">Hourly</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Textarea
+                  name="description"
+                  id="description"
+                  placeholder="Additional notes about this account"
+                  className="min-h-[80px]"
+                />
+              </div>
 
+              {/* Accordion replaced with a details/summary section */}
+              <div className="w-full">
+                <details className="border rounded-md">
+                  <summary className="cursor-pointer px-4 py-2 font-medium select-none">
+                    Advanced Settings
+                  </summary>
+                  <div className="space-y-4 pt-2 px-4 pb-4">
                     <div className="space-y-2">
-                      <Label htmlFor="useSSL" className="block mb-2">
-                        Security
+                      <Label htmlFor="addressBookPath">
+                        Address Book Path
                       </Label>
+                      <Input
+                        name="addressBookPath"
+                        id="addressBookPath"
+                        placeholder="/addressbooks/username/default/"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Leave empty to use the server&apos;s default path
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Switch
-                          name="useSSL"
-                          id="useSSL"
-                          checked={useSSL}
-                          onCheckedChange={setUseSSL}
+                          name="syncAllContacts"
+                          id="syncAllContacts"
                         />
-                        <Label htmlFor="useSSL">
-                          Use SSL/TLS (recommended)
+                        <Label htmlFor="syncAllContacts">
+                          Sync all contacts
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Switch name="syncGroups" id="syncGroups" />
+                        <Label htmlFor="syncGroups">
+                          Sync contact groups
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Switch name="syncPhotos" id="syncPhotos" />
+                        <Label htmlFor="syncPhotos">
+                          Sync contact photos
                         </Label>
                       </div>
                     </div>
                   </div>
+                </details>
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-6 border-t">
+              <Button
+                
+                type="button"
+                onClick={() => window.location.assign("/dashboard")}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Add Account"
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <Textarea
-                      name="description"
-                      id="description"
-                      placeholder="Additional notes about this account"
-                      className="min-h-[80px]"
-                    />
-                  </div>
-
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="advanced">
-                      <AccordionTrigger>Advanced Settings</AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4 pt-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="addressBookPath">
-                              Address Book Path
-                            </Label>
-                            <Input
-                              name="addressBookPath"
-                              id="addressBookPath"
-                              placeholder="/addressbooks/username/default/"
-                            />
-                            <p className="text-sm text-muted-foreground">
-                              Leave empty to use the server&apos;s default path
-                            </p>
-                          </div>
-
-                          <div className="space-y-4">
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                name="syncAllContacts"
-                                id="syncAllContacts"
-                              />
-                              <Label htmlFor="syncAllContacts">
-                                Sync all contacts
-                              </Label>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                              <Switch name="syncGroups" id="syncGroups" />
-                              <Label htmlFor="syncGroups">
-                                Sync contact groups
-                              </Label>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                              <Switch name="syncPhotos" id="syncPhotos" />
-                              <Label htmlFor="syncPhotos">
-                                Sync contact photos
-                              </Label>
-                            </div>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => router.push("/dashboard")}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={pending}>
-                    {pending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      "Add Account"
-                    )}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="presets">
-            <Card>
-              <CardHeader>
-                <CardTitle>Common CardDAV Providers</CardTitle>
-                <CardDescription>
-                  Select a preset for popular CardDAV providers to simplify
-                  setup
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {presets.map((preset) => (
-                    <Card
-                      key={preset.name}
-                      className="hover:border-primary/50 transition-colors cursor-pointer"
-                      onClick={() => {
-                        // setFormData((prev) => ({
-                        //   ...prev,
-                        //   name: `${preset.name} Contacts`,
-                        //   server: preset.server,
-                        //   addressBookPath: preset.path,
-                        //   useSSL: preset.ssl,
-                        // }))
-                        document.getElementById("manual-tab")?.click();
-                      }}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">{preset.name}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                          {preset.server}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
+      {tab === "presets" && (
+        <div className="bg-white border rounded-xl shadow">
+          <div className="p-6 border-b">
+            <div className="text-xl font-semibold mb-1">Common CardDAV Providers</div>
+            <div className="text-gray-500">
+              Select a preset for popular CardDAV providers to simplify setup
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {presets.map((preset) => (
+                <div
+                  key={preset.name}
+                  className="border rounded-xl p-4 hover:border-primary/50 transition-colors cursor-pointer bg-white"
+                  onClick={() => {
+                    document.getElementById("manual-tab")?.click();
+                  }}
+                >
+                  <div className="text-lg font-semibold mb-2">{preset.name}</div>
+                  <div className="text-sm text-muted-foreground">{preset.server}</div>
                 </div>
-              </CardContent>
-              <CardFooter>
-                <p className="text-sm text-muted-foreground">
-                  Select a preset to pre-fill the server details, then complete
-                  your account information
-                </p>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </main>
+              ))}
+            </div>
+          </div>
+          <div className="p-6 border-t">
+            <p className="text-sm text-muted-foreground">
+              Select a preset to pre-fill the server details, then complete your account information
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export const AuthProvider: React.FunctionComponent<AuthProviderProps> = ({
   const [user, setUser] = React.useState<User | null>(null);
 
   React.useEffect(() => {
-    console.log("tokens", tokens);
+    // console.log("tokens", tokens);
 
     const signIn = async () => {
       if (!tokens) return;

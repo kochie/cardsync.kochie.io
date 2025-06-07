@@ -1,14 +1,6 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
 import { IconProp, library } from "@fortawesome/fontawesome-svg-core";
 import { Connection } from "@/actions/types";
 import { Badge } from "../ui/badge";
@@ -17,6 +9,14 @@ import Link from "next/link";
 import { Loader2, RefreshCw } from "lucide-react";
 import { linkedinSyncAction } from "@/actions/linkedinSync";
 import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 import {fab} from "@fortawesome/free-brands-svg-icons"
 
@@ -41,10 +41,10 @@ export function ConnectionCard({ connection }: { connection: Connection }) {
   const [pending, setPending] = useState(false);
 
   return (
-    <Card key={connection.name}>
-      <CardHeader className="pb-2">
+    <Card key={connection.id}>
+      <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center">
+          <CardTitle className="flex items-center">
             <FontAwesomeIcon
               icon={getIcon(connection.provider)}
               className="h-5 w-5 mr-2"
@@ -71,8 +71,7 @@ export function ConnectionCard({ connection }: { connection: Connection }) {
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button
-          variant="outline"
-          size="sm"
+          outline
           type="submit"
           disabled={pending}
           onClick={async () => {
@@ -100,7 +99,7 @@ export function ConnectionCard({ connection }: { connection: Connection }) {
           <Link
             href={`/dashboard/connections/${connection.name.toLowerCase()}`}
           >
-            <Button variant="ghost" size="sm">
+            <Button>
               Settings
             </Button>
           </Link>

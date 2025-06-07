@@ -1,3 +1,5 @@
+"use server"
+
 import { getTokens, Tokens } from "next-firebase-auth-edge";
 import { cookies } from "next/headers";
 import { clientConfig, serverConfig } from "@/config";
@@ -38,5 +40,6 @@ export async function getUser() {
   });
   const user = tokens ? toUser(tokens) : null;
 
+  console.log("User:", user);
   return user;
 }

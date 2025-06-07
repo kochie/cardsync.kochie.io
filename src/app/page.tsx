@@ -1,7 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowRight, CheckCircle, Facebook, Instagram, Linkedin, MessageCircle, Slack, Users } from "lucide-react"
 
 export default function Home() {
@@ -51,7 +50,6 @@ export default function Home() {
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Link href="/signup">
                     <Button
-                      size="lg"
                       className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
                     >
                       Get Started
@@ -60,8 +58,6 @@ export default function Home() {
                   </Link>
                   <Link href="/features">
                     <Button
-                      size="lg"
-                      variant="outline"
                       className="border-purple-200 hover:bg-purple-50 transition-all duration-200"
                     >
                       Learn More
@@ -158,21 +154,21 @@ export default function Home() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card className="bg-white/80 backdrop-blur-sm border-purple-100 hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
-                <CardHeader className="pb-2">
+              <div className="bg-white/80 backdrop-blur-sm border border-purple-100 rounded-xl hover:shadow-lg transition-all duration-200 hover:-translate-y-1 p-6 flex flex-col">
+                <div className="pb-2">
                   <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-2">
                     <Users className="h-6 w-6 text-purple-600" />
                   </div>
-                  <CardTitle className="text-xl">Smart Merging</CardTitle>
-                  <CardDescription>Intelligent duplicate detection</CardDescription>
-                </CardHeader>
-                <CardContent>
+                  <div className="text-xl font-semibold mb-1">Smart Merging</div>
+                  <div className="text-gray-500 mb-2">Intelligent duplicate detection</div>
+                </div>
+                <div className="flex-1">
                   <p className="text-gray-600">
                     Our advanced algorithms detect duplicate contacts and suggest merges, keeping your contact list
                     clean and organized.
                   </p>
-                </CardContent>
-                <CardFooter>
+                </div>
+                <div className="pt-4">
                   <Link
                     href="/features/merging"
                     className="text-purple-600 hover:text-purple-700 font-medium flex items-center"
@@ -180,11 +176,11 @@ export default function Home() {
                     Learn more
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
 
-              <Card className="bg-white/80 backdrop-blur-sm border-pink-100 hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
-                <CardHeader className="pb-2">
+              <div className="bg-white/80 backdrop-blur-sm border border-pink-100 rounded-xl hover:shadow-lg transition-all duration-200 hover:-translate-y-1 p-6 flex flex-col">
+                <div className="pb-2">
                   <div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center mb-2">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -202,16 +198,16 @@ export default function Home() {
                       <path d="m9 12 2 2 4-4"></path>
                     </svg>
                   </div>
-                  <CardTitle className="text-xl">Session Authentication</CardTitle>
-                  <CardDescription>Connect to any platform</CardDescription>
-                </CardHeader>
-                <CardContent>
+                  <div className="text-xl font-semibold mb-1">Session Authentication</div>
+                  <div className="text-gray-500 mb-2">Connect to any platform</div>
+                </div>
+                <div className="flex-1">
                   <p className="text-gray-600">
                     Use session cookies to connect with platforms that don&apos;t offer official APIs, like LinkedIn and
                     Instagram.
                   </p>
-                </CardContent>
-                <CardFooter>
+                </div>
+                <div className="pt-4">
                   <Link
                     href="/features/session-auth"
                     className="text-pink-600 hover:text-pink-700 font-medium flex items-center"
@@ -219,11 +215,11 @@ export default function Home() {
                     Learn more
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
 
-              <Card className="bg-white/80 backdrop-blur-sm border-blue-100 hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
-                <CardHeader className="pb-2">
+              <div className="bg-white/80 backdrop-blur-sm border border-blue-100 rounded-xl hover:shadow-lg transition-all duration-200 hover:-translate-y-1 p-6 flex flex-col">
+                <div className="pb-2">
                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-2">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -241,16 +237,16 @@ export default function Home() {
                       <path d="M12 8v4l3 3"></path>
                     </svg>
                   </div>
-                  <CardTitle className="text-xl">Automatic Sync</CardTitle>
-                  <CardDescription>Always up-to-date contacts</CardDescription>
-                </CardHeader>
-                <CardContent>
+                  <div className="text-xl font-semibold mb-1">Automatic Sync</div>
+                  <div className="text-gray-500 mb-2">Always up-to-date contacts</div>
+                </div>
+                <div className="flex-1">
                   <p className="text-gray-600">
                     Schedule automatic synchronization to keep your contacts updated across all your devices and
                     platforms.
                   </p>
-                </CardContent>
-                <CardFooter>
+                </div>
+                <div className="pt-4">
                   <Link
                     href="/features/auto-sync"
                     className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
@@ -258,8 +254,8 @@ export default function Home() {
                     Learn more
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -387,7 +383,6 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
                 <Button
-                  size="lg"
                   className="bg-white text-purple-600 hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
                 >
                   Get Started for Free
@@ -396,8 +391,7 @@ export default function Home() {
               </Link>
               <Link href="/demo">
                 <Button
-                  size="lg"
-                  variant="outline"
+                  outline
                   className="border-white text-white hover:bg-white/10 transition-all duration-200"
                 >
                   Watch Demo

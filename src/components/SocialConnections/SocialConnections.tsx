@@ -1,81 +1,86 @@
 import { Connection } from "@/actions/types";
-
-import { ConnectionCard } from "./ConnectionCard";
 import { getUser } from "@/actions/getUser";
 import { getAdminDB } from "@/lib/firebaseAdmin";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { ConnectionTableRow } from "./ConnectionTableRow";
 
 export default async function SocialConnections() {
   const db = getAdminDB();
   const user = await getUser();
 
   if (!user) {
-    return <div>Please log in to view your connections.</div>;
+    return <div className="p-4">Please log in to view your connections.</div>;
   }
-  console.log("User ID:", `users/${user.uid}/connections`);
 
-  const connections = await db
+  const connectionsSnapshot = await db
     .collection(`users/${user.uid}/connections`)
-    .get()
-    .then((snapshot) =>
-      snapshot.docs.map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...doc.data(),
-          } as Connection)
-      )
-    );
+    .get();
+
+  const connections = connectionsSnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      lastSynced: data.lastSynced?.toDate ? data.lastSynced.toDate() : null,
+      provider: data.provider || "Unknown",
+      name: data.name || "Unnamed Connection",
+      status: data.status || "Unknown",
+      authMethod: data.authMethod || "Unknown",
+      contacts: data.contacts || 0,
+      syncFrequency: data.syncFrequency || "Manual",
+    } as Connection;
+  });
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>CardDAV Accounts</CardTitle>
-          <CardDescription>
-            Manage your CardDAV server connections for contact synchronization
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {connections.length > 0 ? (
-                connections.map((connector) => (
-                  <ConnectionCard key={connector.id} connection={connector} />
-                ))
-              ) : (
-                <div className="text-center py-8 border rounded-lg border-dashed">
-                  <div className="text-muted-foreground mb-2">
-                    No Connections accounts configured
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Add a Connections account to sync contacts with your devices
-                    and services
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Link
-            href={"/dashboard/linkedin/add"}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add CardDAV Account
-          </Link>
-        </CardFooter>
-      </Card>
+    <div className="space-y-6">
+
+
+      {connections.length > 0 ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>Provider</TableHeader>
+                <TableHeader>Name</TableHeader>
+                <TableHeader>Last Synced</TableHeader>
+                <TableHeader>Sync Frequency</TableHeader>
+                <TableHeader>Contacts</TableHeader>
+                <TableHeader>Status</TableHeader>
+                <TableHeader className="text-right">Actions</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {connections.map((connection) => (
+                <ConnectionTableRow key={connection.id} connection={connection} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="text-center py-12 border rounded-lg border-dashed">
+          <h3 className="text-xl font-medium text-muted-foreground mb-2">
+            No connections yet
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add a social connection to start syncing your contacts.
+          </p>
+          <Button>
+            <Link href={"/dashboard/connections/add"}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add First Connection
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

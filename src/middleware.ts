@@ -62,6 +62,6 @@ export const config = {
     '/api/login',
     '/api/logout',
     '/api/refresh-token',
-    '/((?!_next|favicon.ico|api|.*\\.|$).*)'
+    '/dashboard/(.*)'
   ]
 };

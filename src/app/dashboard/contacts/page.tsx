@@ -1,20 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input, InputGroup } from "@/components/ui/input";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dropdown,
+  DropdownButton,
+  DropdownItem,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/dropdown";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,13 +28,12 @@ import {
   Facebook,
   Filter,
   Linkedin,
-  MoreHorizontal,
   Plus,
-  Search,
   Slack,
   Trash2,
-  Users,
-} from "lucide-react"
+} from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEllipsis, faSearch } from "@fortawesome/free-solid-svg-icons";
 
 // Sample data for contacts
 const contactsData = [
@@ -154,16 +157,19 @@ const contactsData = [
     source: "Facebook",
     lastUpdated: "2023-05-04T11:20:00Z",
   },
-]
+];
 
 export default function ContactsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [sourceFilter, setSourceFilter] = useState("all")
-  const [sortField, setSortField] = useState("name")
-  const [sortDirection, setSortDirection] = useState("asc")
 
-  const itemsPerPage = 10
+
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sortField, setSortField] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const itemsPerPage = 10;
 
   // Filter contacts based on search query and source filter
   const filteredContacts = contactsData.filter((contact) => {
@@ -171,82 +177,72 @@ export default function ContactsPage() {
       contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.title.toLowerCase().includes(searchQuery.toLowerCase())
+      contact.title.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesSource = sourceFilter === "all" || contact.source === sourceFilter
+    const matchesSource =
+      sourceFilter === "all" || contact.source === sourceFilter;
 
-    return matchesSearch && matchesSource
-  })
+    return matchesSearch && matchesSource;
+  });
 
   // Sort contacts
   const sortedContacts = [...filteredContacts].sort((a, b) => {
-    let comparison = 0
+    let comparison = 0;
 
     if (sortField === "name") {
-      comparison = a.name.localeCompare(b.name)
+      comparison = a.name.localeCompare(b.name);
     } else if (sortField === "email") {
-      comparison = a.email.localeCompare(b.email)
+      comparison = a.email.localeCompare(b.email);
     } else if (sortField === "company") {
-      comparison = a.company.localeCompare(b.company)
+      comparison = a.company.localeCompare(b.company);
     } else if (sortField === "lastUpdated") {
-      comparison = new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime()
+      comparison =
+        new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime();
     }
 
-    return sortDirection === "asc" ? comparison : -comparison
-  })
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
 
   // Paginate contacts
-  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage)
-  const paginatedContacts = sortedContacts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
+  const paginatedContacts = sortedContacts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleSort = (field: string) => {
     if (field === sortField) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortField(field)
-      setSortDirection("asc")
+      setSortField(field);
+      setSortDirection("asc");
     }
-  }
+  };
 
   const getSourceIcon = (source: string) => {
     switch (source) {
       case "LinkedIn":
-        return <Linkedin className="h-4 w-4 text-blue-600" />
+        return <Linkedin className="h-4 w-4 text-blue-600" />;
       case "Facebook":
-        return <Facebook className="h-4 w-4 text-blue-600" />
+        return <Facebook className="h-4 w-4 text-blue-600" />;
       case "Slack":
-        return <Slack className="h-4 w-4 text-purple-600" />
+        return <Slack className="h-4 w-4 text-purple-600" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
-    }).format(date)
-  }
+    }).format(date);
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <Users className="h-5 w-5" />
-            <span>ContactSync</span>
-          </Link>
-          <nav className="ml-auto flex items-center gap-4">
-            <Link href="/dashboard">Dashboard</Link>
-            <Link href="/dashboard/contacts" className="font-medium">
-              Contacts
-            </Link>
-            <Link href="/dashboard/duplicates">Duplicates</Link>
-          </nav>
-        </div>
-      </header>
       <main className="flex-1 container py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">All Contacts</h1>
@@ -257,33 +253,33 @@ export default function ContactsPage() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6 items-start md:items-center justify-between">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <InputGroup className="">
+            <FontAwesomeIcon icon={faSearch} className="" data-slot="icon" />
             <Input
-              placeholder="Search contacts..."
-              className="pl-8"
-              value={searchQuery}
+              name="search"
+              placeholder="Search&hellip;"
+              aria-label="Search"
               onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchQuery}
+              className="w-lg"
             />
-          </div>
+          </InputGroup>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                  <SelectItem value="Facebook">Facebook</SelectItem>
-                  <SelectItem value="Slack">Slack</SelectItem>
-                </SelectContent>
+              <Select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+              >
+                <option value="all">All Sources</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Slack">Slack</option>
               </Select>
             </div>
 
-            <Button variant="outline">
+            <Button>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -292,41 +288,60 @@ export default function ContactsPage() {
 
         <div className="rounded-md border">
           <Table>
-            <TableHeader>
+            <TableHead>
               <TableRow>
-                <TableHead className="w-[250px]">
-                  <button className="flex items-center gap-1 hover:text-primary" onClick={() => handleSort("name")}>
+                <TableHeader className="w-[250px]">
+                  <button
+                    className="flex items-center gap-1 hover:text-primary"
+                    onClick={() => handleSort("name")}
+                  >
                     Name
                     {sortField === "name" && (
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                        className={`h-4 w-4 transition-transform ${
+                          sortDirection === "desc" ? "rotate-180" : ""
+                        }`}
                       />
                     )}
                   </button>
-                </TableHead>
-                <TableHead>
-                  <button className="flex items-center gap-1 hover:text-primary" onClick={() => handleSort("email")}>
+                </TableHeader>
+                <TableHeader>
+                  <button
+                    className="flex items-center gap-1 hover:text-primary"
+                    onClick={() => handleSort("email")}
+                  >
                     Email
                     {sortField === "email" && (
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                        className={`h-4 w-4 transition-transform ${
+                          sortDirection === "desc" ? "rotate-180" : ""
+                        }`}
                       />
                     )}
                   </button>
-                </TableHead>
-                <TableHead className="hidden md:table-cell">Phone</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  <button className="flex items-center gap-1 hover:text-primary" onClick={() => handleSort("company")}>
+                </TableHeader>
+                <TableHeader className="hidden md:table-cell">
+                  Phone
+                </TableHeader>
+                <TableHeader className="hidden lg:table-cell">
+                  <button
+                    className="flex items-center gap-1 hover:text-primary"
+                    onClick={() => handleSort("company")}
+                  >
                     Company
                     {sortField === "company" && (
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                        className={`h-4 w-4 transition-transform ${
+                          sortDirection === "desc" ? "rotate-180" : ""
+                        }`}
                       />
                     )}
                   </button>
-                </TableHead>
-                <TableHead className="hidden lg:table-cell">Source</TableHead>
-                <TableHead className="hidden md:table-cell">
+                </TableHeader>
+                <TableHeader className="hidden lg:table-cell">
+                  Source
+                </TableHeader>
+                <TableHeader className="hidden md:table-cell">
                   <button
                     className="flex items-center gap-1 hover:text-primary"
                     onClick={() => handleSort("lastUpdated")}
@@ -334,61 +349,69 @@ export default function ContactsPage() {
                     Last Updated
                     {sortField === "lastUpdated" && (
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                        className={`h-4 w-4 transition-transform ${
+                          sortDirection === "desc" ? "rotate-180" : ""
+                        }`}
                       />
                     )}
                   </button>
-                </TableHead>
-                <TableHead className="w-[70px]"></TableHead>
+                </TableHeader>
+                <TableHeader className="w-[70px]"></TableHeader>
               </TableRow>
-            </TableHeader>
+            </TableHead>
             <TableBody>
               {paginatedContacts.length > 0 ? (
                 paginatedContacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src="/placeholder-user.jpg" alt={contact.name} />
-                          <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
+                        <Avatar
+                          className="h-8 w-8"
+                          initials={contact.name.charAt(0)}
+                          src={`https://robohash.org/${contact.name}`}
+                          alt={contact.name}
+                        ></Avatar>
                         <div>
                           <div>{contact.name}</div>
-                          <div className="text-xs text-muted-foreground hidden sm:block">{contact.title}</div>
+                          <div className="text-xs text-muted-foreground hidden sm:block">
+                            {contact.title}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>{contact.email}</TableCell>
-                    <TableCell className="hidden md:table-cell">{contact.phone}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{contact.company}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {contact.phone}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {contact.company}
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <div className="flex items-center gap-1">
                         {getSourceIcon(contact.source)}
                         <span>{contact.source}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{formatDate(contact.lastUpdated)}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {formatDate(contact.lastUpdated)}
+                    </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
+                      <Dropdown>
+                        <DropdownButton className="flex justify-center items-center h-8 cursor-pointer">
+                            <FontAwesomeIcon icon={faEllipsis} fixedWidth className="" />
                             <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
+                        </DropdownButton>
+                        <DropdownMenu>
+                          <DropdownItem className="cursor-pointer">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          </DropdownItem>
+                          <DropdownItem className="text-destructive cursor-pointer">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
                     </TableCell>
                   </TableRow>
                 ))
@@ -408,31 +431,31 @@ export default function ContactsPage() {
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-muted-foreground">
               Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, filteredContacts.length)} of {filteredContacts.length} contacts
+              {Math.min(currentPage * itemsPerPage, filteredContacts.length)} of{" "}
+              {filteredContacts.length} contacts
             </div>
             <div className="flex items-center gap-1">
               <Button
-                variant="outline"
-                size="icon"
+                outline
                 onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="icon"
-                  className="w-8 h-8"
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <Button
+                    key={page}
+                    outline
+                    className="w-8 h-8"
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                )
+              )}
               <Button
-                variant="outline"
-                size="icon"
+                outline
                 onClick={() => setCurrentPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
               >
@@ -443,5 +466,5 @@ export default function ContactsPage() {
         )}
       </main>
     </div>
-  )
+  );
 }
