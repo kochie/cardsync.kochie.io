@@ -6,8 +6,8 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { ArrowLeft, CheckCircle, Loader2, Users } from "lucide-react"
+import { Label } from "@/components/ui/fieldset"
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
                     <p className="text-sm text-gray-600 mb-4">
                       Didn&apos;t receive the email? Check your spam folder or try again.
                     </p>
-                    <Button variant="outline" className="w-full" onClick={() => setIsSubmitted(false)}>
+                    <Button outline className="w-full" onClick={() => setIsSubmitted(false)}>
                       Try again
                     </Button>
                   </div>

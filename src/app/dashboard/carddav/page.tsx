@@ -1,27 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
-  Dropdown,
-  DropdownButton,
-  DropdownItem,
-  DropdownMenu,
-
-} from "@/components/ui/dropdown"
-import {
-  ArrowLeft,
-  ChevronRight,
-  Edit,
-  MoreHorizontal,
   Plus,
-  RefreshCw,
-  Server,
-  Shield,
-  Trash2,
-  Users,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import CardDavConnection from "@/components/CardDavConnection/CardDavConnection"
@@ -29,7 +10,6 @@ import { Heading } from "@/components/ui/heading"
 
 export default function CardDAVPage() {
   const router = useRouter()
-  const [syncingAccount, setSyncingAccount] = useState<number | null>(null)
 
   const accounts = [
     {
@@ -64,13 +44,6 @@ export default function CardDAVPage() {
     },
   ]
 
-  const handleSync = (id: number) => {
-    setSyncingAccount(id)
-    // Simulate sync
-    setTimeout(() => {
-      setSyncingAccount(null)
-    }, 2000)
-  }
 
   return (
     <div className="flex flex-col">

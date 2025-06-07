@@ -7,12 +7,12 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Facebook, Loader2, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { createUserWithEmailAndPassword, getAuth } from "firebase/auth"
 import { app } from "@/firebase"
+import { Label } from "@/components/ui/fieldset"
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -89,7 +89,7 @@ export default function SignupPage() {
 
               <div className="space-y-4 mb-6">
                 <Button
-                  variant="outline"
+                  outline
                   className="w-full h-11 flex items-center justify-center gap-2 hover:bg-gray-50"
                   onClick={() => {
                     setIsLoading(true)
@@ -132,7 +132,7 @@ export default function SignupPage() {
                 </Button>
 
                 <Button
-                  variant="outline"
+                  outline
                   className="w-full h-11 flex items-center justify-center gap-2 hover:bg-gray-50"
                   disabled={isLoading}
                 >
@@ -206,7 +206,7 @@ export default function SignupPage() {
                   <Checkbox
                     id="terms"
                     checked={agreeTerms}
-                    onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                    onChange={(checked) => setAgreeTerms(checked as boolean)}
                     className="mt-1"
                   />
                   <label htmlFor="terms" className="text-sm text-gray-600 leading-tight">

@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import {
   getAuth,
   onAuthStateChanged,
-  updateProfile,
   User,
 } from "firebase/auth";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
@@ -15,14 +14,16 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import Modal from "react-modal";
 import updateUser from "@/actions/updateUser";
+import { Area } from "react-easy-crop";
 
 // Dynamically import react-easy-crop to avoid SSR issues
 const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false });
 
 function getCroppedImg(
   imageSrc: string,
-  croppedAreaPixels: any,
-  zoom: number
+  croppedAreaPixels: Area,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _zoom: number
 ): Promise<Blob> {
   return new Promise((resolve) => {
     const image = new window.Image();
@@ -63,7 +64,7 @@ export default function ProfilePage() {
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   useEffect(() => {
     const auth = getAuth(app);
@@ -87,7 +88,7 @@ export default function ProfilePage() {
     }
   };
 
-  const onCropComplete = (_: any, croppedAreaPixels: any) => {
+  const onCropComplete = (_: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
 
@@ -186,6 +187,7 @@ export default function ProfilePage() {
         <div className="mb-4 font-semibold">Crop your profile picture</div>
         {cropImage && (
           <div style={{ position: "relative", width: "100%", height: 300 }}>
+            {/* @ts-expect-error weird types */}
             <Cropper
               image={cropImage}
               crop={crop}
@@ -194,6 +196,8 @@ export default function ProfilePage() {
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
+
+
             />
           </div>
         )}

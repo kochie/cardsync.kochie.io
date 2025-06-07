@@ -8,7 +8,7 @@ import { ArrowLeft, ChevronRight, Linkedin, Users } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Image from "next/image"
 import { Input } from "@/components/ui/input"
-import cookie from "cookie"
+import {parse} from "cookie"
 import { addLinkedinCookie } from "@/actions/addLinkedinCreds"
 import { Label } from "@/components/ui/fieldset"
 
@@ -30,7 +30,7 @@ export default function LinkedInConnectionPage() {
   }
 
   useEffect(() => {
-    const cookies = cookie.parse(cookieValue)
+    const cookies = parse(cookieValue)
     const sessionId = cookies["JSESSIONID"]
     if (sessionId) {
       setJsessionValue(sessionId)

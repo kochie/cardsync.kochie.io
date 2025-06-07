@@ -3,9 +3,8 @@
 import { useActionState, useEffect, useState } from "react";
 import { onSnapshot, getFirestore, collection } from "firebase/firestore";
 import { app } from "@/firebase";
-import { Badge, Plus, RefreshCw, Settings, Trash2 } from "lucide-react";
+import { Badge, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthProvider";
 import { deleteCardDavAction } from "@/actions/deleteCardDav";
 import { cardDavSyncAction } from "@/actions/cardDavSync";

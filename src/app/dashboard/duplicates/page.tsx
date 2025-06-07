@@ -4,11 +4,11 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
+import { Radio, RadioField, RadioGroup  } from "@/components/ui/radio"
 import { ArrowLeft, Check, ChevronRight, Facebook, Linkedin, Mail, Phone, Slack, Users } from "lucide-react"
+import { Label } from "@/components/ui/fieldset"
 
 export default function DuplicatesPage() {
   const [currentDuplicate, setCurrentDuplicate] = useState(0)
@@ -116,14 +116,14 @@ export default function DuplicatesPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Link href="/dashboard">
-              <Button variant="ghost" size="icon">
+              <Button>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <h1 className="text-2xl font-bold">Resolve Duplicate Contacts</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline">
+            <Badge>
               {currentDuplicate + 1} of {duplicates.length}
             </Badge>
           </div>
@@ -142,9 +142,7 @@ export default function DuplicatesPage() {
                 <div className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src="/placeholder-user.jpg" alt="Contact" />
-                        <AvatarFallback>{duplicate.contact1.name.charAt(0)}</AvatarFallback>
+                      <Avatar className="h-10 w-10" src="/placeholder-user.jpg" initials={duplicate.contact1.name.charAt(0)}>
                       </Avatar>
                       <div>
                         <div className="font-medium">{duplicate.contact1.name}</div>
@@ -169,7 +167,7 @@ export default function DuplicatesPage() {
                       <div className="text-sm">{duplicate.contact1.company}</div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <Badge variant="outline" className="text-xs font-normal">
+                      <Badge className="text-xs font-normal">
                         {duplicate.contact1.title}
                       </Badge>
                     </div>
@@ -179,9 +177,7 @@ export default function DuplicatesPage() {
                 <div className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src="/placeholder-user.jpg" alt="Contact" />
-                        <AvatarFallback>{duplicate.contact2.name.charAt(0)}</AvatarFallback>
+                      <Avatar className="h-10 w-10" src="/placeholder-user.jpg" initials={duplicate.contact2.name.charAt(0)}>
                       </Avatar>
                       <div>
                         <div className="font-medium">{duplicate.contact2.name}</div>
@@ -206,7 +202,7 @@ export default function DuplicatesPage() {
                       <div className="text-sm">{duplicate.contact2.company}</div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <Badge variant="outline" className="text-xs font-normal">
+                      <Badge className="text-xs font-normal">
                         {duplicate.contact2.title}
                       </Badge>
                     </div>
@@ -221,17 +217,17 @@ export default function DuplicatesPage() {
                     <div className="font-medium text-sm">Name</div>
                     <RadioGroup
                       value={selectedFields.name}
-                      onValueChange={(value) => handleFieldChange("name", value)}
+                      onChange={(value) => handleFieldChange("name", value)}
                       className="flex col-span-2"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contact1" id="name-1" />
+                      <RadioField className="flex items-center space-x-2">
+                        <Radio value="contact1" id="name-1" />
                         <Label htmlFor="name-1">{duplicate.contact1.name}</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <RadioGroupItem value="contact2" id="name-2" />
+                      </RadioField>
+                      <RadioField className="flex items-center space-x-2 ml-4">
+                        <Radio value="contact2" id="name-2" />
                         <Label htmlFor="name-2">{duplicate.contact2.name}</Label>
-                      </div>
+                      </RadioField>
                     </RadioGroup>
                   </div>
 
@@ -239,17 +235,17 @@ export default function DuplicatesPage() {
                     <div className="font-medium text-sm">Email</div>
                     <RadioGroup
                       value={selectedFields.email}
-                      onValueChange={(value) => handleFieldChange("email", value)}
+                      onChange={(value) => handleFieldChange("email", value)}
                       className="flex col-span-2"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contact1" id="email-1" />
+                      <RadioField className="flex items-center space-x-2">
+                        <Radio value="contact1" id="email-1" />
                         <Label htmlFor="email-1">{duplicate.contact1.email}</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <RadioGroupItem value="contact2" id="email-2" />
+                      </RadioField>
+                      <RadioField className="flex items-center space-x-2 ml-4">
+                        <Radio value="contact2" id="email-2" />
                         <Label htmlFor="email-2">{duplicate.contact2.email}</Label>
-                      </div>
+                      </RadioField>
                     </RadioGroup>
                   </div>
 
@@ -257,17 +253,17 @@ export default function DuplicatesPage() {
                     <div className="font-medium text-sm">Phone</div>
                     <RadioGroup
                       value={selectedFields.phone}
-                      onValueChange={(value) => handleFieldChange("phone", value)}
+                      onChange={(value) => handleFieldChange("phone", value)}
                       className="flex col-span-2"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contact1" id="phone-1" />
+                      <RadioField className="flex items-center space-x-2">
+                        <Radio value="contact1" id="phone-1" />
                         <Label htmlFor="phone-1">{duplicate.contact1.phone}</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <RadioGroupItem value="contact2" id="phone-2" />
+                      </RadioField>
+                      <RadioField className="flex items-center space-x-2 ml-4">
+                        <Radio value="contact2" id="phone-2" />
                         <Label htmlFor="phone-2">{duplicate.contact2.phone}</Label>
-                      </div>
+                      </RadioField>
                     </RadioGroup>
                   </div>
 
@@ -275,17 +271,17 @@ export default function DuplicatesPage() {
                     <div className="font-medium text-sm">Company</div>
                     <RadioGroup
                       value={selectedFields.company}
-                      onValueChange={(value) => handleFieldChange("company", value)}
+                      onChange={(value) => handleFieldChange("company", value)}
                       className="flex col-span-2"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contact1" id="company-1" />
+                      <RadioField className="flex items-center space-x-2">
+                        <Radio value="contact1" id="company-1" />
                         <Label htmlFor="company-1">{duplicate.contact1.company}</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <RadioGroupItem value="contact2" id="company-2" />
+                      </RadioField>
+                      <RadioField className="flex items-center space-x-2 ml-4">
+                        <Radio value="contact2" id="company-2" />
                         <Label htmlFor="company-2">{duplicate.contact2.company}</Label>
-                      </div>
+                      </RadioField>
                     </RadioGroup>
                   </div>
 
@@ -293,17 +289,17 @@ export default function DuplicatesPage() {
                     <div className="font-medium text-sm">Title</div>
                     <RadioGroup
                       value={selectedFields.title}
-                      onValueChange={(value) => handleFieldChange("title", value)}
+                      onChange={(value) => handleFieldChange("title", value)}
                       className="flex col-span-2"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="contact1" id="title-1" />
+                      <RadioField className="flex items-center space-x-2">
+                        <Radio value="contact1" id="title-1" />
                         <Label htmlFor="title-1">{duplicate.contact1.title}</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <RadioGroupItem value="contact2" id="title-2" />
+                      </RadioField>
+                      <RadioField className="flex items-center space-x-2 ml-4">
+                        <Radio value="contact2" id="title-2" />
                         <Label htmlFor="title-2">{duplicate.contact2.title}</Label>
-                      </div>
+                      </RadioField>
                     </RadioGroup>
                   </div>
                 </div>
@@ -311,11 +307,11 @@ export default function DuplicatesPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={handlePrevious} disabled={currentDuplicate === 0}>
+            <Button outline onClick={handlePrevious} disabled={currentDuplicate === 0}>
               Previous
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline">Skip</Button>
+              <Button outline>Skip</Button>
               <Button onClick={handleNext}>
                 {currentDuplicate < duplicates.length - 1 ? (
                   "Next"

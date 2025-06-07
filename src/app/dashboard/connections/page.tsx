@@ -1,6 +1,6 @@
 import SocialConnections from "@/components/SocialConnections/SocialConnections";
 import { Button } from "@/components/ui/button";
-import { Divider } from "@/components/ui/divider";
+// import { Divider } from "@/components/ui/divider";
 import { Link } from "@/components/ui/link";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

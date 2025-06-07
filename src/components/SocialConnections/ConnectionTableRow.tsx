@@ -79,15 +79,14 @@ export function ConnectionTableRow({ connection }: { connection: Connection }) {
       <TableCell>{connection.syncFrequency || "Manual"}</TableCell>
       <TableCell>{connection.contacts ?? 0}</TableCell>
       <TableCell>
-        <Badge variant={connection.status === "Connected" ? "default" : "outline"}>
+        <Badge >
           {connection.status}
         </Badge>
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
           <Button
-            variant="outline"
-            size="sm"
+            outline
             onClick={handleSync}
             disabled={pending}
           >
@@ -104,7 +103,7 @@ export function ConnectionTableRow({ connection }: { connection: Connection }) {
             )}
           </Button>
           {connection.status === "Connected" && (
-            <Button variant="outline" size="sm" asChild>
+            <Button outline >
               <Link href={`/dashboard/connections/${connection.id}/settings`}> {/* Assuming settings page uses ID */}
                 <Settings className="h-4 w-4 mr-1.5" />
                 Settings
