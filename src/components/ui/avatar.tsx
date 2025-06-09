@@ -50,10 +50,10 @@ export function Avatar({
       <Image
           src={src}
           alt={alt}
-          width={40}
-          height={40}
+          width={80}
+          height={80}
           className={clsx(
-            'object-cover',
+            'object-cover aspect-square',
             square ? 'rounded-[var(--avatar-radius,20%)]' : 'rounded-full'
           )}
         />}

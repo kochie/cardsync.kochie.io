@@ -7,18 +7,10 @@ import { Badge, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "@/context/AuthProvider";
 import { deleteCardDavAction } from "@/actions/deleteCardDav";
-import { cardDavSyncAction } from "@/actions/cardDavSync";
-
-interface CardDavConnection {
-  id: string;
-  name: string;
-  server: string;
-  username: string;
-  password: string;
-  contactCount: number;
-  lastSync: string;
-  status: string;
-}
+import { cardDavSyncPull, cardDavSyncPush } from "@/actions/cardDavSync";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faDownload, faRefresh, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { CardDav } from "@/models/carddav";
 
 export default function CardDavConnection() {
   return (
@@ -32,7 +24,7 @@ export default function CardDavConnection() {
 }
 
 function CardDAVAccountsList() {
-  const [accounts, setAccounts] = useState<CardDavConnection[]>([]);
+  const [accounts, setAccounts] = useState<CardDav[]>([]);
   const db = getFirestore(app);
 
   const { user } = useAuth();
@@ -50,7 +42,7 @@ function CardDAVAccountsList() {
           id: doc.id,
           ...doc.data(),
         }));
-        setAccounts(data as CardDavConnection[]);
+        setAccounts(data as CardDav[]);
       }
     );
   }, [db, user]);
@@ -74,11 +66,11 @@ function CardDAVAccountsList() {
             </div>
             <div className="text-sm text-right space-y-1">
               <div>{account.contactCount} contacts</div>
-              <div>Last sync: {account.lastSync}</div>
+              <div>Last sync: {account.lastSynced?.toISOString()}</div>
               <Badge>{account.status}</Badge>
             </div>
             <div className="ml-4 flex gap-2">
-              <SyncButton id={account.id} />
+              <SyncButtons id={account.id} />
               <Button outline className="cursor-pointer">
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
@@ -102,34 +94,70 @@ function CardDAVAccountsList() {
   );
 }
 
-function SyncButton({ id }: { id: string }) {
-  const [, action, pending] = useActionState(
-    cardDavSyncAction.bind(null, {}, id),
-    null
-  );
+function SyncButtons({ id }: { id: string }) {
+  const [pending, setPending] = useState(false);
+
+  async function onPull() {
+    setPending(true);
+    try {
+      await cardDavSyncPull(id)
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onPush() {
+    setPending(true);
+    try {
+      await cardDavSyncPush(id)
+    } finally {
+      setPending(false);
+    }
+  }
+
 
   return (
-    <form action={action}>
+    <>
       <Button
         outline
         type="submit"
         disabled={pending}
+        onClick={onPull}
         className="cursor-pointer"
       >
         {pending ? (
           <>
-            <RefreshCw className="h-4 w-4 animate-spin" />
+            <FontAwesomeIcon icon={faRefresh} spin className="h-4 w-4" /> 
             <span className="sr-only">Syncing...</span>
           </>
         ) : (
           <>
-            <RefreshCw className="h-4 w-4" />
+            <FontAwesomeIcon icon={faDownload} className="h-4 w-4" />
             <span className="sr-only">Sync</span>
           </>
         )}
       </Button>
-    </form>
-  );
+            <Button
+        outline
+        type="submit"
+        disabled={pending}
+        onClick={onPush}
+        className="cursor-pointer"
+      >
+        {pending ? (
+          <>
+            <FontAwesomeIcon icon={faRefresh} spin className="h-4 w-4" /> 
+            <span className="sr-only">Syncing...</span>
+          </>
+        ) : (
+          <>
+            <FontAwesomeIcon icon={faUpload} className="h-4 w-4" />
+            <span className="sr-only">Sync</span>
+          </>
+        )}
+      </Button>
+</>  );
+  
 }
 
 function DeleteButton({ id }: { id: string }) {

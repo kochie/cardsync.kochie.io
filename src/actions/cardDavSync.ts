@@ -2,150 +2,164 @@
 
 import * as dav from "dav";
 import { getUser } from "./userUtil";
-import vCard from "vcf";
-import { getAdminDB } from "@/lib/firebaseAdmin";
+import { getAdminDB, uploadToCloudStorage } from "@/lib/firebaseAdmin";
+import { Contact } from "@/models/contacts";
+import { cardDavConverter } from "@/models/carddav";
+import { contactConverter } from "@/models/contactConverter";
 
 const db = getAdminDB();
 
-interface Email {
-  type: string[];
-  value: string;
-}
+function parseVCardPhoto(photoUrl: string): Buffer {
+  // 2.1: PHOTO;JPEG:http://example.com/photo.jpg
+  // 2.1: PHOTO;JPEG;ENCODING=BASE64:[base64-data]
+  // 3.0: PHOTO;TYPE=JPEG;VALUE=URI:http://example.com/photo.jpg
+  // 3.0: PHOTO;TYPE=JPEG;ENCODING=b:[base64-data]
+  // 4.0: PHOTO;MEDIATYPE=image/jpeg:http://example.com/photo.jpg
+  // 4.0: PHOTO;ENCODING=BASE64;TYPE=JPEG:[base64-data]
 
-interface Phone {
-  type: string[];
-  value: string;
-}
+  if (!photoUrl) {
+    return Buffer.from([]);
+  }
 
-interface Contact {
-  id: string;
-  name: string;
-  emails?: Email[];
-  phone?: Phone[];
-  address: string;
+  const parts = photoUrl.split(";");
+  // Check if the photo is a URL
+  // const mediaType = parts
+  //   .find((part) => part.startsWith("TYPE=") || part.startsWith("MEDIATYPE="))
+  //   ?.split(":")?.[0]
+  //   .split("=")[1];
+  // if (!mediaType) {
+  //   console.error("Invalid photo URL format:", photoUrl);
+  // }
+
+  if (parts.some((part) => part.startsWith("ENCODING="))) {
+    return Buffer.from(photoUrl.split(":")[1], "base64");
+  }
+
+  throw new Error(
+    "Unsupported photo format or missing encoding in vCard: " + photoUrl
+  );
+
+  // Check if the photo is a base64 encoded string
 }
 
 async function saveContacts(
   userId: string,
-  contacts: Contact[],
-  connectionId: string
+  contacts: Contact[]
 ): Promise<void> {
-  const batch = db.batch();
+  let batch = db.batch();
+  let opCount = 0;
 
   for (const contact of contacts) {
     const contactId = contact.id;
-    const docRef = db.doc(
-      `users/${userId}/carddav/${connectionId}/contacts/${contactId}`
-    );
 
+    // If the contact has a photo, upload it to Cloud Storage
+    if (contact.photo) {
+      try {
+        // Decode from vcard base64 format
+
+        const photoBuffer = parseVCardPhoto(contact.photo);
+
+        contact.photoUrl = await uploadToCloudStorage(
+          photoBuffer,
+          contact.id,
+          userId
+        );
+      } catch (error) {
+        console.error(
+          `Failed to upload photo for contact ${contactId}:`,
+          error
+        );
+      }
+    }
+
+    const docRef = db
+      .doc(`users/${userId}/contacts/${contactId}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withConverter(contactConverter as any);
     batch.set(docRef, contact);
+    opCount++;
+    if (opCount === 400) {
+      await batch.commit();
+      batch = db.batch();
+      opCount = 0;
+    }
   }
 
-  await batch.commit();
+  if (opCount > 0) {
+    await batch.commit();
+  }
 }
 
-function toContact(contact: dav.VCard): Contact {
-  const parsed = new vCard().parse(contact.addressData);
+async function getCardDavSettings(userId: string, cardId: string) {
+  const snapshot = await db
+    .doc(`users/${userId}/carddav/${cardId}`)
+    .withConverter(cardDavConverter)
+    .get();
 
-  const contactId = parsed.get("uid") ?? parsed.get("rev");
-  if (!contactId) {
-    throw new Error("Contact ID not found");
+  const settings = snapshot.data();
+  if (!settings) {
+    console.error("CardDAV connection not found");
+    throw new Error("CardDAV connection not found");
   }
-
-  const contactObject: Contact = {
-    id: contactId.toString(),
-    name: parsed.get("fn").valueOf().toString(),
-    address: parsed.get("adr")?.toString() ?? "",
-  };
-
-  const emails: Email[] = [];
-  if (parsed.get("email")) {
-    const email = parsed.get("email");
-
-    if (Array.isArray(email)) {
-      email.forEach((email) => {
-        const a = email.toJSON();
-        emails.push({
-          type: [a[1]["type"]].flat(),
-          value: [a[3]].flat()[0],
-        });
-      });
-    } else {
-      const a = email.toJSON();
-      emails.push({
-        type: [a[1]["type"]].flat(),
-        value: [a[3]].flat()[0],
-      });
-    }
-    contactObject.emails = emails;
-  }
-
-  const phones: Phone[] = [];
-  if (parsed.get("tel")) {
-    const phone = parsed.get("tel");
-    if (Array.isArray(phone)) {
-      phone.forEach((phone) => {
-        const a = phone.toJSON();
-        phones.push({
-          type: [a[1]["type"]].flat(),
-          value: [a[3]].flat()[0],
-        });
-      });
-    } else {
-      const a = phone.toJSON();
-      phones.push({
-        type: [a[1]["type"]].flat(),
-        value: [a[3]].flat()[0],
-      });
-    }
-    contactObject.phone = phones;
-  }
-  return contactObject;
-}
-
-export async function cardDavSyncAction(prevState: object, cardId: string) {
-  console.log("CardDavSyncAction called with state:", prevState);
-  console.log("Card ID:", cardId);
-  const user = await getUser();
-
-  const snapshot = await db.doc(`users/${user.uid}/carddav/${cardId}`).get();
-
-  const data = snapshot.data();
-  console.log("Snapshot data:", data);
-
-  const cardDavSettings = {
-    serverUrl: data?.server,
-    username: data?.username,
-    password: data?.password,
-    addressBookPath: data?.addressBookPath,
-    useSSL: data?.useSSL,
-  };
 
   const xhr = new dav.transport.Basic(
     new dav.Credentials({
-      username: cardDavSettings.username,
-      password: cardDavSettings.password,
+      username: settings.username,
+      password: settings.password,
     })
   );
 
   const serverUrl = new URL(
-    cardDavSettings.addressBookPath,
-    `${cardDavSettings.useSSL ? "https" : "http"}://${
-      cardDavSettings.serverUrl
-    }`
+    settings.addressBookPath,
+    `${settings.useSSL ? "https" : "http"}://${settings.server}`
   ).toString();
 
-  console.log("Server URL:", serverUrl);
+  const account = await dav.createAccount({
+    accountType: "carddav",
+    server: serverUrl,
+    xhr,
+    loadObjects: true,
+    loadCollections: true,
+  });
+
+  return account;
+}
+
+export async function cardDavSyncPull(cardId: string) {
+  // console.log("Server URL:", serverUrl);
 
   // Discover address books
   try {
-    const account = await dav.createAccount({
-      accountType: "carddav",
-      server: serverUrl,
-      xhr,
-      loadObjects: true,
-      loadCollections: true,
-    });
+    const user = await getUser();
+    const account = await getCardDavSettings(user.uid, cardId);
+
+    console.log(`Syncing CardDAV for user: ${user.uid}, cardId: ${cardId}`);
+    console.log(`Number of address books: ${account.addressBooks.length}`);
+
+    for await (const addressBook of account.addressBooks) {
+      if (addressBook.displayName === "#addressbooks") {
+        const contacts = Contact.fromAddressBook(addressBook, cardId);
+
+        console.log(
+          `Found ${contacts.length} contacts in address book: ${addressBook.displayName}`
+        );
+        // Print first 10 contacts for debugging
+
+        await saveContacts(user.uid, contacts);
+      }
+    }
+  } catch (error) {
+    console.error("Error during CardDAV sync:", error);
+    return {
+      error,
+    };
+  }
+}
+
+export async function cardDavSyncPush(cardId: string) {
+  try {
+    const user = await getUser();
+    const account = await getCardDavSettings(user.uid, cardId);
 
     const addressBook = account.addressBooks?.[0];
     if (!addressBook || !addressBook.objects) {
@@ -153,7 +167,10 @@ export async function cardDavSyncAction(prevState: object, cardId: string) {
       return;
     }
 
-    await saveContacts(user.uid, addressBook.objects.map(toContact), cardId);
+    // Push contacts to CardDAV server
+    // for (const contact of addressBook.objects) {
+    //   // await contact.save();
+    // }
   } catch (error) {
     console.error("Error during CardDAV sync:", error);
     return {

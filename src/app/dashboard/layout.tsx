@@ -19,11 +19,13 @@ import {
 import {
   Sidebar,
   SidebarBody,
+  SidebarDivider,
   SidebarFooter,
   SidebarHeader,
   SidebarItem,
   SidebarLabel,
   SidebarSection,
+  SidebarSpacer,
 } from "@/components/ui/sidebar";
 import { SidebarLayout } from "@/components/ui/sidebar-layout";
 import { useAuth } from "@/context/AuthProvider";
@@ -40,6 +42,9 @@ import {
   faAddressBook,
   faPeopleArrows,
   faUserGroup,
+  faPeopleGroup,
+  faServer,
+  faCircleQuestion,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { usePathname } from "next/navigation";
@@ -103,7 +108,10 @@ export default function DashboardLayout({
       sidebar={
         <Sidebar>
           <SidebarHeader>
-            <Heading className="flex gap-2 items-center"><FontAwesomeIcon icon={faUserGroup}/>ContactSync</Heading>
+            <Heading className="flex gap-2 items-center">
+              <FontAwesomeIcon icon={faUserGroup} />
+              ContactSync
+            </Heading>
           </SidebarHeader>
           <SidebarBody>
             <SidebarSection>
@@ -114,16 +122,47 @@ export default function DashboardLayout({
                 <FontAwesomeIcon fixedWidth icon={faUsers} />
                 <SidebarLabel>Contacts</SidebarLabel>
               </SidebarItem>
-              <SidebarItem href="/dashboard/carddav"
-                current={path.startsWith("/dashboard/carddav")}>
+              <SidebarItem
+                href="/dashboard/groups"
+                current={path.startsWith("/dashboard/groups")}
+              >
+                <FontAwesomeIcon fixedWidth icon={faPeopleGroup} />
+                <SidebarLabel>Groups</SidebarLabel>
+              </SidebarItem>
+              <SidebarItem
+                href="/dashboard/addressbooks"
+                current={path.startsWith("/dashboard/addressbooks")}
+              >
                 <FontAwesomeIcon fixedWidth icon={faAddressBook} />
+                <SidebarLabel>Address Books</SidebarLabel>
+              </SidebarItem>
+            </SidebarSection>
+            <SidebarDivider />
+            <SidebarSection>
+              <SidebarItem
+                href="/dashboard/carddav"
+                current={path.startsWith("/dashboard/carddav")}
+              >
+                <FontAwesomeIcon fixedWidth icon={faServer} />
                 <SidebarLabel>CardDAV Servers</SidebarLabel>
               </SidebarItem>
-              <SidebarItem href="/dashboard/connections"
-                current={path.startsWith("/dashboard/connections")}>
+              <SidebarItem
+                href="/dashboard/connections"
+                current={path.startsWith("/dashboard/connections")}
+              >
                 <FontAwesomeIcon fixedWidth icon={faPeopleArrows} />
                 <SidebarLabel>Social Connections</SidebarLabel>
               </SidebarItem>
+            </SidebarSection>
+            <SidebarSpacer />
+            <SidebarSection>
+                <SidebarItem
+                    href="/dashboard/support"
+                    current={path.startsWith("/dashboard/support")}
+                >
+                    <FontAwesomeIcon fixedWidth icon={faCircleQuestion} />
+                    <SidebarLabel>Support</SidebarLabel>
+                </SidebarItem>
             </SidebarSection>
           </SidebarBody>
           <SidebarFooter className="max-lg:hidden">

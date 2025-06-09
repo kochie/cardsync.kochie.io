@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, InputGroup } from "@/components/ui/input";
 import {
@@ -25,190 +25,204 @@ import {
   ChevronDown,
   Download,
   Edit,
-  Facebook,
   Filter,
-  Linkedin,
   Plus,
-  Slack,
   Trash2,
 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsis, faSearch } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEllipsis,
+  faSearch,
+  faEnvelope,
+} from "@fortawesome/free-solid-svg-icons";
+import { ContactModel } from "@/models/contacts";
+import {
+  getFirestore,
+  collection,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+  getDocs,
+  DocumentData,
+  QueryDocumentSnapshot,
+} from "firebase/firestore";
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { app } from "@/firebase";
+import { useAuth } from "@/context/AuthProvider";
+import { contactConverter } from "@/models/contactConverter";
+import { Badge, BadgeProps } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import {
+  faFacebook,
+  faLinkedin,
+  faSlack,
+} from "@fortawesome/free-brands-svg-icons";
+import GoogleAvatar from "@/components/GoogleAvatar";
+import ContactFlyover from "@/components/ContactFlyover";
 
-// Sample data for contacts
-const contactsData = [
-  {
-    id: 1,
-    name: "John Smith",
-    email: "john.smith@example.com",
-    phone: "+1 (555) 123-4567",
-    company: "Acme Inc",
-    title: "Product Manager",
-    source: "LinkedIn",
-    lastUpdated: "2023-05-15T10:30:00Z",
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    email: "sarah.j@company.com",
-    phone: "+1 (555) 222-3333",
-    company: "Tech Solutions",
-    title: "Developer",
-    source: "Slack",
-    lastUpdated: "2023-05-10T14:45:00Z",
-  },
-  {
-    id: 3,
-    name: "Michael Brown",
-    email: "michael.brown@gmail.com",
-    phone: "+1 (555) 444-5555",
-    company: "Global Enterprises",
-    title: "Marketing Director",
-    source: "Facebook",
-    lastUpdated: "2023-05-12T09:15:00Z",
-  },
-  {
-    id: 4,
-    name: "Emily Davis",
-    email: "emily.davis@outlook.com",
-    phone: "+1 (555) 666-7777",
-    company: "Creative Studios",
-    title: "Graphic Designer",
-    source: "LinkedIn",
-    lastUpdated: "2023-05-14T16:20:00Z",
-  },
-  {
-    id: 5,
-    name: "David Wilson",
-    email: "david.wilson@company.org",
-    phone: "+1 (555) 888-9999",
-    company: "Innovative Solutions",
-    title: "CTO",
-    source: "LinkedIn",
-    lastUpdated: "2023-05-11T11:10:00Z",
-  },
-  {
-    id: 6,
-    name: "Jennifer Lee",
-    email: "jennifer.lee@example.com",
-    phone: "+1 (555) 111-2222",
-    company: "Digital Agency",
-    title: "Account Manager",
-    source: "Facebook",
-    lastUpdated: "2023-05-13T13:40:00Z",
-  },
-  {
-    id: 7,
-    name: "Robert Taylor",
-    email: "robert.taylor@gmail.com",
-    phone: "+1 (555) 333-4444",
-    company: "Tech Innovations",
-    title: "Software Engineer",
-    source: "Slack",
-    lastUpdated: "2023-05-09T15:30:00Z",
-  },
-  {
-    id: 8,
-    name: "Lisa Anderson",
-    email: "lisa.anderson@company.net",
-    phone: "+1 (555) 555-6666",
-    company: "Global Marketing",
-    title: "VP of Sales",
-    source: "LinkedIn",
-    lastUpdated: "2023-05-08T10:20:00Z",
-  },
-  {
-    id: 9,
-    name: "James Martin",
-    email: "james.martin@outlook.com",
-    phone: "+1 (555) 777-8888",
-    company: "Creative Design",
-    title: "UI/UX Designer",
-    source: "Facebook",
-    lastUpdated: "2023-05-07T14:15:00Z",
-  },
-  {
-    id: 10,
-    name: "Patricia White",
-    email: "patricia.white@example.org",
-    phone: "+1 (555) 999-0000",
-    company: "Data Analytics Inc",
-    title: "Data Scientist",
-    source: "Slack",
-    lastUpdated: "2023-05-06T09:45:00Z",
-  },
-  {
-    id: 11,
-    name: "Thomas Clark",
-    email: "thomas.clark@company.com",
-    phone: "+1 (555) 222-1111",
-    company: "Financial Services",
-    title: "Financial Analyst",
-    source: "LinkedIn",
-    lastUpdated: "2023-05-05T16:30:00Z",
-  },
-  {
-    id: 12,
-    name: "Jessica Rodriguez",
-    email: "jessica.r@gmail.com",
-    phone: "+1 (555) 444-3333",
-    company: "Healthcare Solutions",
-    title: "Project Manager",
-    source: "Facebook",
-    lastUpdated: "2023-05-04T11:20:00Z",
-  },
-];
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+function getEmailTypeColor(type: string): BadgeProps["color"] {
+  switch (type.toLowerCase()) {
+    case "home":
+      return "blue";
+    case "work":
+      return "green";
+    case "internet":
+      return "purple";
+    case "pref":
+      return "orange";
+    case "cell":
+      return "lime";
+    case "voice":
+      return "yellow";
+    case "x-mobile":
+    case "mobile":
+      return "pink";
+    default:
+      return "zinc"; // fallback for unknown types
+  }
+}
 
 export default function ContactsPage() {
-
-
-  
+  const [contactsData, setContactsData] = useState<ContactModel[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortField, setSortField] = useState("name");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  // const [pageStack, setPageStack] = useState<Array<QueryDocumentSnapshot<DocumentData> | null>>([null]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLastPage, setIsLastPage] = useState(false);
 
-  const itemsPerPage = 10;
+  // Items per page state
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const { user } = useAuth();
 
-  // Filter contacts based on search query and source filter
+  const [contact, setSelectedContact] = useState<ContactModel | null>(null);
+
+  const fetchContacts = useCallback(
+    async function () {
+      console.log("Fetching contacts for user:", user?.uid);
+
+      if (!user) {
+        setContactsData([]);
+        return;
+      }
+
+      let orderField = sortField;
+      if (sortField === "email") orderField = "emails";
+      if (sortField === "company") orderField = "company";
+      if (sortField === "lastUpdated") orderField = "lastUpdated";
+      const contactsQuery = query(
+        collection(db, "users", user.uid, "contacts").withConverter(
+          contactConverter
+        ),
+        orderBy(orderField, sortDirection),
+        ...(lastVisible ? [startAfter(lastVisible)] : []),
+        limit(itemsPerPage)
+      );
+      const snapshot = await getDocs(contactsQuery);
+
+      // Immediately populate contacts with placeholder photoUrls
+      const contacts = snapshot.docs.map((doc) => doc.data());
+      console.log("Fetched contacts:", contacts);
+
+      setContactsData(contacts);
+      setIsLastPage(snapshot.docs.length < itemsPerPage);
+    },
+    [itemsPerPage, lastVisible, sortField, sortDirection, user]
+  );
+
+  // Firestore pagination: fetch contacts for the current page
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
+
+  // useEffect(() => {
+  //   if (!user) return;
+
+  //   contactsData.forEach(async (contact, i) => {
+  //     try {
+  //       if (!contact.photoUrl) {
+  //         return
+  //       }
+
+  //       // console.log(contact)
+
+  //       const fileRef = ref(
+  //         storage,
+  //         contact.photoUrl
+  //       );
+  //       //check if photo exists
+  //       contact.photoUrl = await getDownloadURL(fileRef);
+
+  //       setContactsData((prevContacts) => {
+  //         const updatedContacts = [...prevContacts];
+  //         updatedContacts[i] = contact; // Update the specific contact
+  //         return updatedContacts;
+  //       });
+  //     } catch (error) {
+  //       console.warn(`Failed to fetch photo for contact ${contact.id}:`, error);
+  //     }
+  //   });
+  // }, [contactsData, user]);
+
+  // Filtering and searching is now done on the client, but only for the current page's contacts
   const filteredContacts = contactsData.filter((contact) => {
     const matchesSearch =
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.title.toLowerCase().includes(searchQuery.toLowerCase());
-
+      contact.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.emails?.some((email) =>
+        email.toLowerCase().includes(searchQuery.toLowerCase())
+      ) ||
+      contact.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.title?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSource =
-      sourceFilter === "all" || contact.source === sourceFilter;
-
+      sourceFilter === "all" || contact.sources.includes(sourceFilter);
     return matchesSearch && matchesSource;
   });
 
-  // Sort contacts
-  const sortedContacts = [...filteredContacts].sort((a, b) => {
-    let comparison = 0;
+  // Sorting is handled by Firestore query, so skip client sort
 
-    if (sortField === "name") {
-      comparison = a.name.localeCompare(b.name);
-    } else if (sortField === "email") {
-      comparison = a.email.localeCompare(b.email);
-    } else if (sortField === "company") {
-      comparison = a.company.localeCompare(b.company);
-    } else if (sortField === "lastUpdated") {
-      comparison =
-        new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime();
+  // Pagination navigation handlers
+  const handleNextPage = async () => {
+    if (!user || contactsData.length === 0 || isLastPage) return;
+    // const lastDoc = contactsData.length > 0 ? contactsData[contactsData.length - 1] : null;
+    // Find the Firestore doc snapshot for startAfter
+    let orderField = sortField;
+    if (sortField === "email") orderField = "emails";
+    if (sortField === "company") orderField = "company";
+    if (sortField === "lastUpdated") orderField = "lastUpdated";
+    const contactsQuery = query(
+      collection(db, "users", user.uid, "contacts").withConverter(
+        contactConverter
+      ),
+      orderBy(orderField, sortDirection),
+      ...(lastVisible ? [startAfter(lastVisible)] : []),
+      limit(itemsPerPage)
+    );
+    const snapshot = await getDocs(contactsQuery);
+    if (snapshot.docs.length > 0) {
+      // setPageStack((prev) => [...prev, snapshot.docs[0]]);
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+      setCurrentPage((prev) => prev + 1);
     }
+  };
 
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
-
-  // Paginate contacts
-  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
-  const paginatedContacts = sortedContacts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const handlePreviousPage = async () => {
+    if (currentPage <= 1) return;
+    // Remove last page pointer from stack and go to previous
+    // setPageStack((prev) => {
+    //   const newStack = [...prev];
+    //   newStack.pop();
+    //   setLastVisible(newStack[newStack.length - 1] || null);
+    //   return newStack;
+    // });
+    setCurrentPage((prev) => prev - 1);
+  };
 
   const handleSort = (field: string) => {
     if (field === sortField) {
@@ -217,29 +231,18 @@ export default function ContactsPage() {
       setSortField(field);
       setSortDirection("asc");
     }
+    setLastVisible(null);
+    // setPageStack([null]);
+    setCurrentPage(1);
   };
 
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case "LinkedIn":
-        return <Linkedin className="h-4 w-4 text-blue-600" />;
-      case "Facebook":
-        return <Facebook className="h-4 w-4 text-blue-600" />;
-      case "Slack":
-        return <Slack className="h-4 w-4 text-purple-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date);
-  };
+  // const formatDate = (date: Date) => {
+  //   return new Intl.DateTimeFormat("en-US", {
+  //     month: "short",
+  //     day: "numeric",
+  //     year: "numeric",
+  //   }).format(date);
+  // };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -279,6 +282,28 @@ export default function ContactsPage() {
               </Select>
             </div>
 
+            {/* Items per page selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Rows per page:
+              </span>
+              <Select
+                value={itemsPerPage.toString()}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setLastVisible(null);
+                  // setPageStack([null]);
+                  setCurrentPage(1);
+                }}
+              >
+                {[10, 25, 50, 100].map((num) => (
+                  <option key={num} value={num}>
+                    {num}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
             <Button>
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -287,12 +312,13 @@ export default function ContactsPage() {
         </div>
 
         <div className="rounded-md border">
+          <ContactFlyover contact={contact} onClose={() => setSelectedContact(null)} open={!!contact}  />
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeader className="w-[250px]">
+                <TableHeader className="w-[250px] ">
                   <button
-                    className="flex items-center gap-1 hover:text-primary"
+                    className="ml-4 flex items-center gap-1 hover:text-primary"
                     onClick={() => handleSort("name")}
                   >
                     Name
@@ -323,7 +349,7 @@ export default function ContactsPage() {
                 <TableHeader className="hidden md:table-cell">
                   Phone
                 </TableHeader>
-                <TableHeader className="hidden lg:table-cell">
+                {/* <TableHeader className="hidden lg:table-cell">
                   <button
                     className="flex items-center gap-1 hover:text-primary"
                     onClick={() => handleSort("company")}
@@ -337,11 +363,11 @@ export default function ContactsPage() {
                       />
                     )}
                   </button>
-                </TableHeader>
+                </TableHeader> */}
                 <TableHeader className="hidden lg:table-cell">
                   Source
                 </TableHeader>
-                <TableHeader className="hidden md:table-cell">
+                {/* <TableHeader className="hidden md:table-cell">
                   <button
                     className="flex items-center gap-1 hover:text-primary"
                     onClick={() => handleSort("lastUpdated")}
@@ -355,51 +381,162 @@ export default function ContactsPage() {
                       />
                     )}
                   </button>
-                </TableHeader>
+                </TableHeader> */}
                 <TableHeader className="w-[70px]"></TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedContacts.length > 0 ? (
-                paginatedContacts.map((contact) => (
+              {filteredContacts.length > 0 ? (
+                filteredContacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Avatar
-                          className="h-8 w-8"
-                          initials={contact.name.charAt(0)}
-                          src={`https://robohash.org/${contact.name}`}
-                          alt={contact.name}
-                        ></Avatar>
+                      <div className="flex items-center gap-2 ml-4">
+                        <GoogleAvatar path={contact.photoUrl} name={contact.name} />
                         <div>
                           <div>{contact.name}</div>
                           <div className="text-xs text-muted-foreground hidden sm:block">
-                            {contact.title}
+                            {contact.title ?? "No Title"}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{contact.email}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {contact.phone}
+                    <TableCell className="align-top">
+                      {(() => {
+                        const raw = contact.emails?.[0];
+                        if (!raw)
+                          return (
+                            <span className="text-muted-foreground text-sm italic">
+                              No email
+                            </span>
+                          );
+
+                        const parts = raw.split(":");
+                        const typesMatch = raw.match(/TYPE=([^:;]+)/i);
+                        const types = typesMatch
+                          ? typesMatch[1].split(",")
+                          : [];
+                        return (
+                          <div>
+                            <div className="font-medium">{parts[1]}</div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {types.map((type) => (
+                                <Badge
+                                  key={type}
+                                  color={getEmailTypeColor(type)}
+                                  className="text-[10px] px-1.5 py-0.5 rounded-md"
+                                >
+                                  {type}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell className="align-top hidden md:table-cell">
+                      {(() => {
+                        const raw = contact.phone?.[0];
+                        if (!raw)
+                          return (
+                            <span className="text-muted-foreground text-sm italic">
+                              No phone
+                            </span>
+                          );
+
+                        const parts = raw.split(":");
+                        const typesMatch = raw.match(/TYPE=([^:;]+)/i);
+                        const types = typesMatch
+                          ? typesMatch[1].split(",")
+                          : [];
+                        return (
+                          <div>
+                            <div className="font-medium">{parts[1]}</div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {types.map((type) => (
+                                <Badge
+                                  key={type}
+                                  color={getEmailTypeColor(type)}
+                                  className="text-[10px] px-1.5 py-0.5 rounded-md"
+                                >
+                                  {type}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
+                    {/* <TableCell className="hidden lg:table-cell">
                       {contact.company}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <div className="flex items-center gap-1">
-                        {getSourceIcon(contact.source)}
-                        <span>{contact.source}</span>
+                    </TableCell> */}
+                    <TableCell className="hidden lg:table-cell text-center">
+                      <div className="flex justify-center items-center gap-2">
+                        {contact.sources?.some((source) =>
+                          source.toLowerCase().startsWith("carddav")
+                        ) && (
+                          <FontAwesomeIcon
+                            icon={faEnvelope}
+                            size="1x"
+                            className="text-gray-500"
+                          />
+                        )}
+                        {contact.sources?.some((source) =>
+                          source.toLowerCase().startsWith("linkedin")
+                        ) && (
+                          <FontAwesomeIcon
+                            icon={faLinkedin}
+                            size="1x"
+                            className="text-blue-700"
+                          />
+                        )}
+                        {contact.sources?.some((source) =>
+                          source.toLowerCase().startsWith("facebook")
+                        ) && (
+                          <FontAwesomeIcon
+                            icon={faFacebook}
+                            size="1x"
+                            className=""
+                          />
+                        )}
+                        {contact.sources?.some((source) =>
+                          source.toLowerCase().includes("slack")
+                        ) && (
+                          <FontAwesomeIcon
+                            icon={faSlack}
+                            size="1x"
+                            className="text-[#4A154B]"
+                          />
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {formatDate(contact.lastUpdated)}
-                    </TableCell>
+                    {/* <TableCell className="hidden md:table-cell">
+                      {contact.lastUpdated &&
+                      !isNaN(new Date(contact.lastUpdated).getTime())
+                        ? formatDate(contact.lastUpdated)
+                        : "—"}
+                    </TableCell> */}
                     <TableCell>
-                      <Dropdown>
+
+                      <Button
+                        className="h-8 w-8 p-0"
+                        onClick={() => setSelectedContact(contact)}
+                      >
+                        <FontAwesomeIcon
+                          icon={faEllipsis}
+                          fixedWidth
+                          className="h-4 w-4"
+                        />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                      
+                      {/* <Dropdown>
                         <DropdownButton className="flex justify-center items-center h-8 cursor-pointer">
-                            <FontAwesomeIcon icon={faEllipsis} fixedWidth className="" />
-                            <span className="sr-only">Open menu</span>
+                          <FontAwesomeIcon
+                            icon={faEllipsis}
+                            fixedWidth
+                            className=""
+                          />
+                          <span className="sr-only">Open menu</span>
                         </DropdownButton>
                         <DropdownMenu>
                           <DropdownItem className="cursor-pointer">
@@ -411,7 +548,7 @@ export default function ContactsPage() {
                             Delete
                           </DropdownItem>
                         </DropdownMenu>
-                      </Dropdown>
+                      </Dropdown> */}
                     </TableCell>
                   </TableRow>
                 ))
@@ -427,44 +564,29 @@ export default function ContactsPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, filteredContacts.length)} of{" "}
-              {filteredContacts.length} contacts
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                outline
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <Button
-                    key={page}
-                    outline
-                    className="w-8 h-8"
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </Button>
-                )
-              )}
-              <Button
-                outline
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage}
           </div>
-        )}
+          <Pagination>
+            <Button
+              outline
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              outline
+              onClick={handleNextPage}
+              disabled={isLastPage || filteredContacts.length === 0}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Pagination>
+        </div>
       </main>
     </div>
   );
 }
+
