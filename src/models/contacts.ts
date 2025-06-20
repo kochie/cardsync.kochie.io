@@ -114,20 +114,20 @@ export interface ContactWithSources extends ContactModel {
   connectionName?: string; // Connection name for the contact
 }
 
-export class Contact implements ContactModel {
-  id: string; // UID;REV:12345;67890
-  name: string; // FN: Simon Perreault
-  addresses: VCardProperty[]; // [ ADR;TYPE=work:;;123 Main St;City;State;12345;Country ]
-  emails: VCardProperty[]; // [ EMAIL;TYPE=work:
-  phones: VCardProperty[]; // [ TEL;TYPE=work,voice:1-514-123-4567 ]
-  photos: Photo[]; // Base64 encoded photo data
-  lastUpdated?: Date; // Last updated date in ISO format
-  company?: string; // Company name
-  title?: string; // Job title
-  role?: string; // Job title
-  linkedinContact?: string;
-  addressBook: string; // Optional, used for tracking connections
-  birthday?: Date;
+export class Contact {
+  readonly id: string; // UID;REV:12345;67890
+  #name: string; // FN: Simon Perreault
+  #addresses: VCardProperty[]; // [ ADR;TYPE=work:;;123 Main St;City;State;12345;Country ]
+  #emails: VCardProperty[]; // [ EMAIL;TYPE=work:
+  #phones: VCardProperty[]; // [ TEL;TYPE=work,voice:1-514-123-4567 ]
+  #photos: Photo[]; // Base64 encoded photo data
+  #lastUpdated?: Date; // Last updated date in ISO format
+  #company?: string; // Company name
+  #title?: string; // Job title
+  #role?: string; // Job title
+  #linkedinContact?: string;
+  #addressBook: string; // Optional, used for tracking connections
+  #birthday?: Date;
 
   constructor({
     id,
@@ -145,18 +145,18 @@ export class Contact implements ContactModel {
     birthday,
   }: ContactModel) {
     this.id = id;
-    this.name = name;
-    this.addresses = addresses;
-    this.emails = emails;
-    this.phones = phones;
-    this.photos = photos;
-    this.lastUpdated = lastUpdated ? new Date(lastUpdated) : undefined;
-    this.company = company;
-    this.title = title;
-    this.role = role;
-    this.linkedinContact = linkedinContact; // Optional, used for tracking connections
-    this.addressBook = addressBook;
-    this.birthday = birthday;
+    this.#name = name;
+    this.#addresses = addresses;
+    this.#emails = emails;
+    this.#phones = phones;
+    this.#photos = photos;
+    this.#lastUpdated = lastUpdated ? new Date(lastUpdated) : undefined;
+    this.#company = company;
+    this.#title = title;
+    this.#role = role;
+    this.#linkedinContact = linkedinContact; // Optional, used for tracking connections
+    this.#addressBook = addressBook;
+    this.#birthday = birthday;
   }
 
   static async fromDavObjects(
@@ -170,7 +170,7 @@ export class Contact implements ContactModel {
     console.log("Filtered objects to find contacts... Found:", objects.length);
 
     for (const object of objects) {
-      const contact = await this.fromVcard(object, addressBook);
+      const contact = await Contact.fromVcard(object, addressBook);
       contacts.push(contact);
       process.stdout.write(".");
     }
@@ -216,19 +216,19 @@ export class Contact implements ContactModel {
 
     const vcard = new VCard();
     vcard.set("uid", this.id);
-    vcard.set("fn", this.name);
-    vcard.set("n", formatName(this.name));
-    this.addresses.forEach((address) => {
+    vcard.set("fn", this.#name);
+    vcard.set("n", formatName(this.#name));
+    this.#addresses.forEach((address) => {
       vcard.add(address.key, address.value, address.params);
     });
-    this.emails.forEach((email) => {
+    this.#emails.forEach((email) => {
       vcard.add("email", email.value, email.params);
     });
-    this.phones.forEach((phone) => {
+    this.#phones.forEach((phone) => {
       vcard.add("tel", phone.value, phone.params);
     });
 
-    this.photos.forEach((photo) => {
+    this.#photos.forEach((photo) => {
       const params: Record<string, string[]> = {
         type: [photo.type],
       };
@@ -236,41 +236,34 @@ export class Contact implements ContactModel {
       if (photo.data) params["encoding"] = ["b"];
       vcard.add("photo", photo.data ?? photo.url, params);
     });
-    if (this.lastUpdated) {
-      vcard.set("rev", toVCardTimestamp(this.lastUpdated));
-    }
-    if (this.company) {
-      vcard.set("org", this.company);
-    }
-    if (this.title) {
-      vcard.set("title", this.title);
-    }
-    if (this.role) {
-      vcard.set("role", this.role);
-    }
-    if (this.linkedinContact) {
-      vcard.set("x-socialprofile", this.linkedinContact, {
+    if (this.#lastUpdated)
+      vcard.set("rev", toVCardTimestamp(this.#lastUpdated));
+
+    if (this.#company) vcard.set("org", this.#company);
+    if (this.#title) vcard.set("title", this.#title);
+    if (this.#role) vcard.set("role", this.#role);
+
+    if (this.#linkedinContact) {
+      vcard.set("x-socialprofile", this.#linkedinContact, {
         type: ["linkedin"],
       });
-      const linkedinUrl = `https://www.linkedin.com/in/${this.linkedinContact}`;
+      const linkedinUrl = `https://www.linkedin.com/in/${
+        this.#linkedinContact
+      }`;
       vcard.add("url", linkedinUrl, {
         type: ["linkedin"],
         label: ["LinkedIn"],
       });
-      // vcard.add("X-FM-ONLINE-OTHER", linkedinUrl, {
-      //   type: ["linkedin"],
-      //   label: ["LinkedIn"],
-      // });
     }
-    if (this.birthday) {
+    if (this.#birthday) {
       let year = "--";
-      if (this.birthday.getFullYear() > 1900) {
-        year = this.birthday.getFullYear().toString();
+      if (this.#birthday.getFullYear() > 1900) {
+        year = this.#birthday.getFullYear().toString();
       }
 
       vcard.set(
         "bday",
-        `${year}${this.birthday.getMonth() + 1}${this.birthday.getDate()}`
+        `${year}${this.#birthday.getMonth() + 1}${this.#birthday.getDate()}`
       ); // Format as YYYYMMDD
     }
 
@@ -287,7 +280,7 @@ export class Contact implements ContactModel {
             )
           )`
       )
-      .eq("address_book", this.addressBook)
+      .eq("address_book", this.#addressBook)
       .eq("id", this.id)
       .single();
     if (error) {
@@ -451,22 +444,78 @@ export class Contact implements ContactModel {
   > {
     return {
       id: this.id,
-      name: this.name,
-      addresses: this.addresses.map((address) => address.stringify()),
-      emails: this.emails.map((email) => email.stringify()),
-      phones: this.phones.map((phone) => phone.stringify()),
-      company: this.company ?? null,
-      title: this.title ?? null,
-      role: this.role ?? null,
+      name: this.#name,
+      addresses: this.#addresses.map((address) => address.stringify()),
+      emails: this.#emails.map((email) => email.stringify()),
+      phones: this.#phones.map((phone) => phone.stringify()),
+      company: this.#company ?? null,
+      title: this.#title ?? null,
+      role: this.#role ?? null,
       linkedin_contact: null,
-      last_updated: this.lastUpdated?.toISOString() ?? new Date().toISOString(),
+      last_updated:
+        this.#lastUpdated?.toISOString() ?? new Date().toISOString(),
       photo_blur_url:
-        this.photos.length > 0 ? this.photos[0].blurDataUrl ?? null : null,
-      address_book: this.addressBook,
+        this.#photos.length > 0 ? this.#photos[0].blurDataUrl ?? null : null,
+      address_book: this.#addressBook,
       id_is_uppercase: this.id === this.id.toUpperCase(),
-      birth_date: this.birthday
-        ? this.birthday.toISOString().split("T")[0] // Format as YYYY-MM-DD
+      birth_date: this.#birthday
+        ? this.#birthday.toISOString().split("T")[0] // Format as YYYY-MM-DD
         : null,
     };
   }
+
+  addPhone(types: string[], phoneNumber: string): void {
+    const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
+
+    if (!normalizedPhoneNumber) {
+      console.warn(`Invalid phone number: ${phoneNumber}`);
+      return;
+    }
+
+    if (!this.#phones.some((p) => p.value === normalizedPhoneNumber))
+      this.#phones.push(
+        new VCardProperty(
+          "TEL",
+          { TYPE: types.map((type) => type.toLowerCase()) },
+          normalizedPhoneNumber
+        )
+      );
+
+    console.log(
+      `Added phone number: ${normalizedPhoneNumber} with type ${types} to contact ${this.#name}`
+    );
+  }
+
+  addEmail(types: string[], emailAddress: string): void {
+    if (!emailAddress) {
+      console.warn(`Invalid email address: ${emailAddress}`);
+      return;
+    }
+
+    if (
+      !this.#emails.some((e) => e.value === emailAddress) &&
+      emailAddress !== "null"
+    ) {
+      this.#emails.push(
+        new VCardProperty("EMAIL", { TYPE: types.map((type) => type.toLowerCase()) }, emailAddress)
+      );
+      console.log(
+        `Added email address: ${emailAddress} with type ${types} to contact ${this.#name}`
+      );
+    }
+  }
+}
+
+function normalizePhoneNumber(phoneNumber: string): string {
+  // Implement your phone number normalization logic here
+
+  // If the number starts with +61 04, remove the 0
+  if (phoneNumber.startsWith("+61 04")) {
+    phoneNumber = phoneNumber.replace("+61 04", "+614");
+  }
+
+  // remove any non-digit characters except for +
+  phoneNumber = phoneNumber.replace(/[^0-9+]/g, "");
+
+  return phoneNumber;
 }

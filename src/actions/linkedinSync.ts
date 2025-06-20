@@ -1,15 +1,13 @@
 "use server";
 
-import { Contact, parseVCardPhoto } from "@/models/contacts";
+import { Contact } from "@/models/contacts";
 import { LinkedinContact } from "@/models/linkedinContact";
 import {
   LinkedInGraphQLResponse,
   LinkedInProfile,
 } from "@/types/linkedin.types";
 import { createClient } from "@/utils/supabase/server";
-import { VCardProperty } from "@/utils/vcard/vcard";
 import camelcaseKeys from "camelcase-keys";
-import snakecaseKeys from "snakecase-keys";
 
 export interface LinkedinSyncActionState {
   error?: string;
@@ -76,103 +74,21 @@ async function uploadConnections(
   profileData: LinkedInProfile[],
   connectionId: string
 ): Promise<void> {
-  const contacts: LinkedinContact[] = [];
-
-  for (const [element, profile] of elements.map(
-    (el, i) => [el, profileData[i]] as const
-  )) {
-    const contact: LinkedinContact = {
-      connectionId: connectionId,
-      publicIdentifier:
-        element.connectedMemberResolutionResult?.publicIdentifier || "",
-      entityUrn: element.entityUrn,
-      firstName: element.connectedMemberResolutionResult?.firstName || "",
-      lastName: element.connectedMemberResolutionResult?.lastName || "",
-      headline: element.connectedMemberResolutionResult?.headline || "",
-      fullName:
-        `${element.connectedMemberResolutionResult?.firstName} ${element.connectedMemberResolutionResult?.lastName}`.toLowerCase(),
-      birthDate: profile.birthDateOn
-        ? `${profile.birthDateOn.month}-${profile.birthDateOn.day}`
-        : undefined,
-      phoneNumbers:
-        profile.phoneNumbers?.map((phone) => ({
-          type: phone.type || "UNKNOWN",
-          number: phone.phoneNumber.number,
-        })) ?? [],
-      emailAddresses: profile.emailAddress
-        ? [
-            {
-              emailAddress: profile.emailAddress.emailAddress,
-              type: profile.emailAddress.type || "UNKNOWN",
-            },
-          ]
-        : [],
-      addresses: profile.address ? [profile.address] : [],
-      websites:
-        profile.websites?.map((website) => ({
-          url: website.url,
-          type: website.category || "UNKNOWN",
-        })) || [],
-    };
-
-    const artifacts =
-      element.connectedMemberResolutionResult?.profilePicture?.displayImageReference?.vectorImage?.artifacts?.sort(
-        (a, b) => a.width - b.width
-      );
-    const rootUrl =
-      element.connectedMemberResolutionResult?.profilePicture
-        ?.displayImageReference?.vectorImage?.rootUrl;
-    if (artifacts && artifacts.length > 0 && rootUrl) {
-      const largestArtifact = artifacts[artifacts.length - 1];
-      const url = rootUrl + largestArtifact?.fileIdentifyingUrlPathSegment;
-      contact.profilePicture = url;
-    } else {
-      console.warn(
-        `No profile picture found for contact: ${contact.firstName} ${contact.lastName}`
-      );
-      console.warn(
-        `Artifacts: ${JSON.stringify(
-          element.connectedMemberResolutionResult?.profilePicture
-        )}`
-      );
-    }
-
-    contacts.push(contact);
-  }
-
   const supabase = await createClient();
 
-  const upsertAction = await supabase.from("linkedin_contacts").upsert(
-    contacts.map((contact) => {
-      return snakecaseKeys({
-        headline: contact.headline,
-        entityUrn: contact.entityUrn,
-        firstName: contact.firstName,
-        lastName: contact.lastName,
-        fullName: contact.fullName,
-        profilePicture: contact.profilePicture,
-        publicIdentifier: contact.publicIdentifier,
-        connectionId: contact.connectionId.replace("linkedin:", ""),
-        lastSynced: new Date().toISOString(),
-        birthDate: contact.birthDate
-          ? new Date(`1900-${contact.birthDate}`).toISOString()
-          : null,
-        phoneNumbers:
-          contact.phoneNumbers?.map(
-            (phone) => `${phone.type}:${phone.number}`
-          ) ?? [],
-        emails:
-          contact.emailAddresses?.map(
-            (email) => `${email.type}:${email.emailAddress}`
-          ) ?? [],
-        addresses: [contact.addresses?.join(";") ?? ""],
-        websites:
-          contact.websites?.map(
-            (website) => `${website.type}:${website.url}`
-          ) ?? [],
-      });
-    })
-  );
+  const upsertAction = await supabase
+    .from("linkedin_contacts")
+    .upsert(
+      elements
+        .map((el, i) => [el, profileData[i]] as const)
+        .map(([element, profile]) =>
+          LinkedinContact.fromLinkedinData(
+            element,
+            profile,
+            connectionId
+          ).toDatabaseObject()
+        )
+    );
 
   if (upsertAction.error) {
     console.error("Error uploading contacts:", upsertAction.error);
@@ -182,7 +98,7 @@ async function uploadConnections(
   const updateAction = await supabase
     .from("linkedin_connections")
     .update({
-      number_contacts: contacts.length,
+      number_contacts: upsertAction.count ?? undefined,
       last_synced: new Date().toISOString(),
     })
     .eq("id", connectionId.replace("linkedin:", ""));
@@ -344,7 +260,7 @@ const getProfileData = async (
 
 export async function mergeLinkedinContactsAction(
   contactId: string,
-  addressBookId: string,
+  addressBookId: string
 ) {
   const supabase = await createClient();
 
@@ -357,7 +273,9 @@ export async function mergeLinkedinContactsAction(
     throw new Error("Failed to fetch user");
   }
 
-  console.log(`Merging LinkedIn contacts for user ${user.id}, contactId: ${contactId}, addressBookId: ${addressBookId}`);
+  console.log(
+    `Merging LinkedIn contacts for user ${user.id}, contactId: ${contactId}, addressBookId: ${addressBookId}`
+  );
 
   const { data, error } = await supabase
     .from("carddav_contacts")
@@ -377,70 +295,21 @@ export async function mergeLinkedinContactsAction(
     throw new Error("Failed to fetch contacts");
   }
 
-  const contact = new Contact({
-    name: data.name ?? "",
-    addresses: data.addresses.map((adr) => VCardProperty.parse(adr)),
-    emails: data.emails.map((email) => VCardProperty.parse(email)),
-    phones: data.phones.map((phone) => VCardProperty.parse(phone)),
-    photos: await parseVCardPhoto(data.id),
-    company: data.company ?? undefined,
-    title: data.title ?? undefined,
-    role: data.role ?? undefined,
-    id: data.id_is_uppercase ? data.id.toUpperCase() : data.id,
-    linkedinContact: data.linkedin_contacts?.public_identifier ?? undefined,
-    photoBlurUrl: data.photo_blur_url ?? undefined,
-    lastUpdated: new Date(data.last_updated),
-    addressBook: data.carddav_addressbooks.id,
-  });
+  const contact = await Contact.fromDatabaseObject(data);
 
   for (const phone of data.linkedin_contacts?.phone_numbers ?? []) {
     const [type, phoneNumber] = phone.split(":", 2);
-    const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
-
-    if (!normalizedPhoneNumber) {
-      console.warn(`Invalid phone number: ${phoneNumber}`);
-      continue;
-    }
-
-    if (!contact.phones.some((p) => p.value === normalizedPhoneNumber))
-      contact.phones.push(
-        new VCardProperty(
-          "TEL",
-          { TYPE: [type.toLowerCase()] },
-          normalizedPhoneNumber
-        )
-      );
-    console.log(
-      `Added phone number: ${normalizedPhoneNumber} with type ${type} to contact ${contact.name}`
-    );
+    contact.addPhone([type.toLowerCase()], phoneNumber);    
   }
 
   for (const email of data.linkedin_contacts?.emails ?? []) {
     const [type, emailAddress] = email.split(":", 2);
-    if (!emailAddress) {
-      console.warn(`Invalid email address: ${email}`);
-      continue;
-    }
-
-    if (
-      !contact.emails.some((e) => e.value === emailAddress) &&
-      emailAddress !== "null"
-    ) {
-      contact.emails.push(
-        new VCardProperty("EMAIL", { TYPE: [type.toLowerCase()] }, emailAddress)
-      );
-      console.log(
-        `Added email address: ${emailAddress} with type ${type} to contact ${contact.name}`
-      );
-    }
+    contact.addEmail([type.toLowerCase()], emailAddress);
   }
 
   const { error: updateError } = await supabase
     .from("carddav_contacts")
-    .update({
-      emails: contact.emails.map((email) => email.stringify()),
-      phones: contact.phones.map((phone) => phone.stringify()),
-    })
+    .update(contact.toDatabaseObject())
     .eq("id", contactId)
     .eq("address_book", addressBookId);
 
@@ -458,16 +327,4 @@ export async function mergeLinkedinContactsAction(
   };
 }
 
-function normalizePhoneNumber(phoneNumber: string): string {
-  // Implement your phone number normalization logic here
 
-  // If the number starts with +61 04, remove the 0
-  if (phoneNumber.startsWith("+61 04")) {
-    phoneNumber = phoneNumber.replace("+61 04", "+614");
-  }
-
-  // remove any non-digit characters except for +
-  phoneNumber = phoneNumber.replace(/[^0-9+]/g, "");
-
-  return phoneNumber;
-}
