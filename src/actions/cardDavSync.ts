@@ -4,7 +4,6 @@ import { Contact } from "@/models/contacts";
 import { createClient } from "@/utils/supabase/server";
 import { createHash } from "crypto";
 import camelcaseKeys from "camelcase-keys";
-import snakecaseKeys from "snakecase-keys";
 import { Buffer } from "buffer";
 import { createDAVClient } from "tsdav";
 
@@ -305,8 +304,6 @@ export async function cardDavSyncPush(
       const vcard = await Contact.fromDatabaseObject(contact).then((contact) =>
         contact.toVCard()
       );
-
-      console.log(vcard);
 
       const response = await client.updateVCard({
         vCard: vcard,

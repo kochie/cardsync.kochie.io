@@ -382,7 +382,7 @@ export async function mergeLinkedinContactsAction(
     addresses: data.addresses.map((adr) => VCardProperty.parse(adr)),
     emails: data.emails.map((email) => VCardProperty.parse(email)),
     phones: data.phones.map((phone) => VCardProperty.parse(phone)),
-    photos: await parseVCardPhoto(user.id, data.id),
+    photos: await parseVCardPhoto(data.id),
     company: data.company ?? undefined,
     title: data.title ?? undefined,
     role: data.role ?? undefined,
