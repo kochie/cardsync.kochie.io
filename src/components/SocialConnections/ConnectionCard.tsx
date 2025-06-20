@@ -1,8 +1,7 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { IconProp, library } from "@fortawesome/fontawesome-svg-core";
-import { Connection } from "@/actions/types";
+import { library } from "@fortawesome/fontawesome-svg-core";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import Link from "next/link";
@@ -18,26 +17,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import {fab} from "@fortawesome/free-brands-svg-icons"
+import {fab, faLinkedin} from "@fortawesome/free-brands-svg-icons"
+import { LinkedinConnection } from "@/models/linkedinContact";
 
 const dtFormat = new Intl.DateTimeFormat("en-AU");
 
 library.add(fab)
 
-const getIcon = (provider: string): IconProp => {
-  switch (provider) {
-    case "linkedin":
-      return ["fab", "linkedin"];
-    case "facebook":
-      return ["fab", "facebook"];
-    case "instagram":
-      return ["fab", "instagram"];
-    default:
-      return ["fas", "question-circle"];
-  }
-};
-
-export function ConnectionCard({ connection }: { connection: Connection }) {
+export function ConnectionCard({ connection }: { connection: LinkedinConnection }) {
   const [pending, setPending] = useState(false);
 
   return (
@@ -46,7 +33,7 @@ export function ConnectionCard({ connection }: { connection: Connection }) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
             <FontAwesomeIcon
-              icon={getIcon(connection.provider)}
+              icon={faLinkedin}
               className="h-5 w-5 mr-2"
             />
             {connection.name}
@@ -61,10 +48,10 @@ export function ConnectionCard({ connection }: { connection: Connection }) {
       </CardHeader>
       <CardContent>
         <div className="text-sm">
-          {connection.contacts && <p>{connection.contacts} contacts</p>}
-          {connection.authMethod && (
+          {connection.numberContacts && <p>{connection.numberContacts} contacts</p>}
+          {connection.cookies && (
             <p className="text-muted-foreground mt-1">
-              {connection.authMethod}
+              Session Cookies
             </p>
           )}
         </div>

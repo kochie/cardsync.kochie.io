@@ -1,20 +1,13 @@
 "use client";
 
-import { app } from "@/firebase"; // assumes firebase is initialized in this file
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  getAuth,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import Modal from "react-modal";
-import updateUser from "@/actions/updateUser";
 import { Area } from "react-easy-crop";
+import { createClient } from "@/utils/supabase/client";
 
 // Dynamically import react-easy-crop to avoid SSR issues
 const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false });
@@ -54,7 +47,6 @@ function getCroppedImg(
 }
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [photoURL, setPhotoURL] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -66,15 +58,33 @@ export default function ProfilePage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
+  const supabase = createClient();
+
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setDisplayName(u?.displayName || "");
-      setPhotoURL(u?.photoURL || "");
+    const fetchUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setDisplayName(user.user_metadata.displayName || "");
+        setPhotoURL(user.user_metadata.photoURL || "");
+      }
+    };
+
+    fetchUserData();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setDisplayName(session.user.user_metadata.displayName || "");
+        setPhotoURL(session.user.user_metadata.photoURL || "");
+      } else {
+        setDisplayName("");
+        setPhotoURL("");
+      }
     });
-    return () => unsubscribe();
-  }, []);
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase.auth])
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -106,22 +116,43 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+
     setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.error("User not authenticated");
+      setSaving(false);
+      return;
+    }
+
     try {
       let newPhotoURL = photoURL;
       if (file) {
         setUploading(true);
-        const storage = getStorage(app);
-        const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-        await uploadBytes(storageRef, file);
-        newPhotoURL = await getDownloadURL(storageRef);
+
+        const { error } = await supabase.storage
+          .from("assets")
+          .upload(`profile-pictures/${user.id}`, file, { upsert: true });
+
+        if (error) {
+          console.error("Error uploading photo:", error);
+          setUploading(false);
+          return;
+        }
+
+        const { data } = supabase.storage
+          .from("assets")
+          .getPublicUrl(`profile-pictures/${user.id}`);
+        newPhotoURL = data.publicUrl;
         setUploading(false);
       }
 
-      await updateUser(user.uid, {
-        displayName: displayName,
-        photoURL: newPhotoURL,
+      await supabase.auth.updateUser({
+        data: {
+          displayName: displayName,
+          photoURL: newPhotoURL,
+        },
       });
     } finally {
       setSaving(false);
@@ -196,8 +227,6 @@ export default function ProfilePage() {
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
-
-
             />
           </div>
         )}

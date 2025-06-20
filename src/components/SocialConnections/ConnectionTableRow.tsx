@@ -6,12 +6,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { IconProp, library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
 import { fas } from "@fortawesome/free-solid-svg-icons"; // For default icon
-import { Connection } from "@/actions/types";
 import { linkedinSyncAction } from "@/actions/linkedinSync";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Settings } from "lucide-react";
+import { LinkedinConnection } from "@/models/linkedinContact";
 
 library.add(fab, fas);
 
@@ -39,14 +39,13 @@ const getIcon = (provider: string): IconProp => {
   }
 };
 
-export function ConnectionTableRow({ connection }: { connection: Connection }) {
+export function ConnectionTableRow({ connection }: { connection: LinkedinConnection }) {
   const [pending, setPending] = useState(false);
 
   const handleSync = async () => {
     setPending(true);
     // Here, you might want a more generic sync action dispatcher
     // based on connection.provider if you have multiple sync actions.
-    if (connection.provider.toLowerCase() === "linkedin") {
       const result = await linkedinSyncAction(connection.id);
       if (result.error) {
         console.error("Error syncing LinkedIn:", result.error);
@@ -55,9 +54,7 @@ export function ConnectionTableRow({ connection }: { connection: Connection }) {
         // Optionally, show a success toast
         console.log("LinkedIn sync successful");
       }
-    } else {
-      console.warn(`Sync action not implemented for provider: ${connection.provider}`);
-    }
+
     setPending(false);
   };
 
@@ -66,10 +63,10 @@ export function ConnectionTableRow({ connection }: { connection: Connection }) {
       <TableCell>
         <div className="flex items-center gap-2">
           <FontAwesomeIcon
-            icon={getIcon(connection.provider)}
+            icon={getIcon('linkedin')}
             className="h-5 w-5"
           />
-          {connection.provider.charAt(0).toUpperCase() + connection.provider.slice(1)}
+          Linkedin
         </div>
       </TableCell>
       <TableCell className="font-medium">{connection.name}</TableCell>
@@ -77,7 +74,7 @@ export function ConnectionTableRow({ connection }: { connection: Connection }) {
         {connection.lastSynced ? dtFormat.format(new Date(connection.lastSynced)) : "Never"}
       </TableCell>
       <TableCell>{connection.syncFrequency || "Manual"}</TableCell>
-      <TableCell>{connection.contacts ?? 0}</TableCell>
+      <TableCell>{connection.numberContacts}</TableCell>
       <TableCell>
         <Badge >
           {connection.status}

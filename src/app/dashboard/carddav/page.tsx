@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import CardDavConnection from "@/components/CardDavConnection/CardDavConnection"
 import { Heading } from "@/components/ui/heading"
 import { Link } from "@/components/ui/link"

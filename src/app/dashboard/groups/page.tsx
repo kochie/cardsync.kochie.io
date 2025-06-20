@@ -2,28 +2,28 @@
 
 'use client';
 
+import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
-import { collectionGroup, getDocs, getFirestore } from 'firebase/firestore';
-import { useAuth } from '@/context/AuthProvider';
-import { app } from '@/firebase';
 
-const db = getFirestore(app); // Assuming you have a function to get the Firestore instance
 
 export default function GroupsPage() {
-  const { user } = useAuth();
   const [groups, setGroups] = useState<any[]>([]);
+  const supabase = createClient();
 
   useEffect(() => {
-    if (!user) return;
 
     const fetchGroups = async () => {
-      const snapshot = await getDocs(collectionGroup(db, 'groups'));
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setGroups(data);
+      const {data, error} = await supabase.from("groups").select("*")
+
+      if (error) {
+        console.error("Error fetching groups:", error.message);
+        return;
+      }
+      setGroups(data)
     };
 
     fetchGroups();
-  }, [user]);
+  }, [supabase]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">

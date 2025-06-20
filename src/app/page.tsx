@@ -16,10 +16,10 @@ export default function Home() {
             <span className="text-xl">ContactSync</span>
           </Link>
           <nav className="ml-auto flex gap-4 sm:gap-6">
-            <Link href="/login" className="text-sm font-medium hover:text-purple-600 transition-colors">
+            <Link href="/auth/login" className="text-sm font-medium hover:text-purple-600 transition-colors">
               Login
             </Link>
-            <Link href="/signup" className="text-sm font-medium hover:text-purple-600 transition-colors">
+            <Link href="/auth/signup" className="text-sm font-medium hover:text-purple-600 transition-colors">
               Sign up
             </Link>
           </nav>

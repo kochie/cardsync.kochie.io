@@ -1,6 +1,3 @@
-import { Connection } from "@/actions/types";
-import { getUser } from "@/actions/getUser";
-import { getAdminDB } from "@/lib/firebaseAdmin";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import {
@@ -12,39 +9,31 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ConnectionTableRow } from "./ConnectionTableRow";
+import { createClient } from "@/utils/supabase/server";
+import camelcaseKeys from "camelcase-keys";
 
 export default async function SocialConnections() {
-  const db = getAdminDB();
-  const user = await getUser();
+  const supabase = await createClient();
 
-  if (!user) {
-    return <div className="p-4">Please log in to view your connections.</div>;
+  const {data, error} = await supabase.from("linkedin_connections").select("*")
+
+  if (error) {
+    console.error("Error fetching connections:", error);
+    return <div className="p-4">Error loading connections.</div>;
   }
 
-  const connectionsSnapshot = await db
-    .collection(`users/${user.uid}/connections`)
-    .get();
-
-  const connections = connectionsSnapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      lastSynced: data.lastSynced?.toDate ? data.lastSynced.toDate() : null,
-      provider: data.provider || "Unknown",
-      name: data.name || "Unnamed Connection",
-      status: data.status || "Unknown",
-      authMethod: data.authMethod || "Unknown",
-      contacts: data.contacts || 0,
-      syncFrequency: data.syncFrequency || "Manual",
-    } as Connection;
-  });
+  const connections = camelcaseKeys(data, { deep: true }).map((conn) => ({
+    ...conn,
+    lastSynced: conn.lastSynced ? new Date(conn.lastSynced) : undefined,
+    status: conn.status ?? "connected",
+    syncFrequency: conn.syncFrequency ?? "manual",
+  }));
 
   return (
     <div className="space-y-6">
 
 
-      {connections.length > 0 ? (
+      {data.length > 0 ? (
         <div className="rounded-md border">
           <Table>
             <TableHead>

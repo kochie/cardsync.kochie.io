@@ -6,12 +6,10 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-import { Label } from "@/components/ui/fieldset";
+import { Field, Label } from "@/components/ui/fieldset";
 
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -45,12 +43,9 @@ const presets = [
 ];
 
 export default function AddCardDAVPage() {
-  const [,formAction, pending] = useActionState(
-    createCardDavAction,
-    {
-        errors: {}
-    }
-  );
+  const [, formAction, pending] = useActionState(createCardDavAction, {
+    errors: {},
+  });
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -87,7 +82,11 @@ export default function AddCardDAVPage() {
         </div>
 
         {/* Tabs replaced with custom tab logic */}
-        <CardDavTabs formAction={formAction} pending={pending} presets={presets} />
+        <CardDavTabs
+          formAction={formAction}
+          pending={pending}
+          presets={presets}
+        />
       </main>
     </div>
   );
@@ -96,25 +95,38 @@ export default function AddCardDAVPage() {
 interface CardDavTabsProps {
   formAction: (payload: FormData) => void;
   pending: boolean;
-  presets: Array<{ name: string; server: string; path?: string; ssl?: boolean }>;
+  presets: Array<{
+    name: string;
+    server: string;
+    path?: string;
+    ssl?: boolean;
+  }>;
 }
 
 // Custom tab logic and content
-function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
+function CardDavTabs({ formAction, pending, presets }: CardDavTabsProps) {
   const [tab, setTab] = useState<"manual" | "presets">("manual");
 
   return (
     <div className="w-full">
       <div className="flex gap-2 mb-4">
         <button
-          className={`px-4 py-2 rounded-t ${tab === "manual" ? "bg-white border-b-2 border-primary font-semibold" : "bg-gray-100"}`}
+          className={`px-4 py-2 rounded-t ${
+            tab === "manual"
+              ? "bg-white border-b-2 border-primary font-semibold"
+              : "bg-gray-100"
+          }`}
           onClick={() => setTab("manual")}
           id="manual-tab"
         >
           Manual Setup
         </button>
         <button
-          className={`px-4 py-2 rounded-t ${tab === "presets" ? "bg-white border-b-2 border-primary font-semibold" : "bg-gray-100"}`}
+          className={`px-4 py-2 rounded-t ${
+            tab === "presets"
+              ? "bg-white border-b-2 border-primary font-semibold"
+              : "bg-gray-100"
+          }`}
           onClick={() => setTab("presets")}
         >
           Common Presets
@@ -126,116 +138,131 @@ function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
           <form action={formAction}>
             {/* CardHeader */}
             <div className="p-6 border-b">
-              <div className="text-xl font-semibold mb-1">CardDAV Account Details</div>
+              <div className="text-xl font-semibold mb-1">
+                CardDAV Account Details
+              </div>
               <div className="text-gray-500">
-                Enter your CardDAV server details to sync contacts with your devices and services
+                Enter your CardDAV server details to sync contacts with your
+                devices and services
               </div>
             </div>
             {/* CardContent */}
             <div className="p-6 space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Account Name</Label>
-                  <Input
-                    name="name"
-                    id="name"
-                    placeholder="My CardDAV Account"
-                    required
-                  />
+                  <Field>
+                    <Label htmlFor="name">Account Name</Label>
+                    <Input
+                      name="name"
+                      id="name"
+                      placeholder="My CardDAV Account"
+                      required
+                    />
+                  </Field>
                   <p className="text-sm text-muted-foreground">
                     A friendly name to identify this account
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="server">Server URL</Label>
-                  <div className="flex items-center">
-                    <div className="flex items-center border rounded-l-md px-3 bg-muted">
-                      {presets[0].ssl ? (
-                        <>
-                          <Shield className="h-4 w-4 text-green-600 mr-1" />
-                          https://
-                        </>
-                      ) : (
-                        <>
-                          <Server className="h-4 w-4 text-amber-600 mr-1" />
-                          http://
-                        </>
-                      )}
+                  <Field>
+                    <Label htmlFor="server">Server URL</Label>
+                    <div className="flex items-center">
+                      <div className="flex items-center border rounded-l-md px-3 bg-muted">
+                        {presets[0].ssl ? (
+                          <>
+                            <Shield className="h-4 w-4 text-green-600 mr-1" />
+                            https://
+                          </>
+                        ) : (
+                          <>
+                            <Server className="h-4 w-4 text-amber-600 mr-1" />
+                            http://
+                          </>
+                        )}
+                      </div>
+                      <Input
+                        name="server"
+                        id="server"
+                        placeholder="carddav.example.com"
+                        className="rounded-l-none"
+                        required
+                      />
                     </div>
+                  </Field>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Field>
+                    <Label htmlFor="username">Username</Label>
                     <Input
-                      name="server"
-                      id="server"
-                      placeholder="carddav.example.com"
-                      className="rounded-l-none"
+                      name="username"
+                      id="username"
+                      placeholder="username or email"
                       required
                     />
-                  </div>
+                  </Field>
+                </div>
+
+                <div className="space-y-2">
+                  <Field>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      name="password"
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Your password is encrypted and stored securely
+                    </p>
+                  </Field>
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    name="username"
-                    id="username"
-                    placeholder="username or email"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    name="password"
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Your password is encrypted and stored securely
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="syncFrequency">Sync Frequency</Label>
-                  <Select name="syncFrequency">
+                  <Field>
+                    <Label htmlFor="syncFrequency">Sync Frequency</Label>
+                    <Select name="syncFrequency">
                       <option value="manual">Manual only</option>
                       <option value="hourly">Hourly</option>
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
-                  </Select>
+                    </Select>
+                  </Field>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="useSSL" className="block mb-2">
-                    Security
-                  </Label>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      name="useSSL"
-                      id="useSSL"
-                      checked={presets[0].ssl}
-                    />
-                    <Label htmlFor="useSSL">
-                      Use SSL/TLS (recommended)
+                  <Field>
+                    <Label htmlFor="useSSL" className="block mb-2">
+                      Security
                     </Label>
-                  </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        name="useSSL"
+                        id="useSSL"
+                        checked={presets[0].ssl}
+                      />
+                      <Label htmlFor="useSSL">Use SSL/TLS (recommended)</Label>
+                    </div>
+                  </Field>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Textarea
-                  name="description"
-                  id="description"
-                  placeholder="Additional notes about this account"
-                  className="min-h-[80px]"
-                />
+                <Field>
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    name="description"
+                    id="description"
+                    placeholder="Additional notes about this account"
+                    className="min-h-[80px]"
+                  />
+                </Field>
               </div>
 
               {/* Accordion replaced with a details/summary section */}
@@ -246,42 +273,47 @@ function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
                   </summary>
                   <div className="space-y-4 pt-2 px-4 pb-4">
                     <div className="space-y-2">
-                      <Label htmlFor="addressBookPath">
-                        Address Book Path
-                      </Label>
-                      <Input
-                        name="addressBookPath"
-                        id="addressBookPath"
-                        placeholder="/addressbooks/username/default/"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Leave empty to use the server&apos;s default path
-                      </p>
+                      <Field>
+                        <Label htmlFor="addressBookPath">
+                          Address Book Path
+                        </Label>
+                        <Input
+                          name="addressBookPath"
+                          id="addressBookPath"
+                          placeholder="/addressbooks/username/default/"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Leave empty to use the server&apos;s default path
+                        </p>
+                      </Field>
                     </div>
 
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
-                        <Switch
-                          name="syncAllContacts"
-                          id="syncAllContacts"
-                        />
-                        <Label htmlFor="syncAllContacts">
-                          Sync all contacts
-                        </Label>
+                        <Field>
+                          <Switch name="syncAllContacts" id="syncAllContacts" />
+                          <Label htmlFor="syncAllContacts">
+                            Sync all contacts
+                          </Label>
+                        </Field>
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <Switch name="syncGroups" id="syncGroups" />
-                        <Label htmlFor="syncGroups">
-                          Sync contact groups
-                        </Label>
+                        <Field>
+                          <Switch name="syncGroups" id="syncGroups" />
+                          <Label htmlFor="syncGroups">
+                            Sync contact groups
+                          </Label>
+                        </Field>
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <Switch name="syncPhotos" id="syncPhotos" />
-                        <Label htmlFor="syncPhotos">
-                          Sync contact photos
-                        </Label>
+                        <Field>
+                          <Switch name="syncPhotos" id="syncPhotos" />
+                          <Label htmlFor="syncPhotos">
+                            Sync contact photos
+                          </Label>
+                        </Field>
                       </div>
                     </div>
                   </div>
@@ -290,7 +322,6 @@ function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
             </div>
             <div className="flex justify-between items-center p-6 border-t">
               <Button
-                
                 type="button"
                 onClick={() => window.location.assign("/dashboard")}
               >
@@ -314,7 +345,9 @@ function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
       {tab === "presets" && (
         <div className="bg-white border rounded-xl shadow">
           <div className="p-6 border-b">
-            <div className="text-xl font-semibold mb-1">Common CardDAV Providers</div>
+            <div className="text-xl font-semibold mb-1">
+              Common CardDAV Providers
+            </div>
             <div className="text-gray-500">
               Select a preset for popular CardDAV providers to simplify setup
             </div>
@@ -329,15 +362,20 @@ function CardDavTabs({ formAction, pending, presets } : CardDavTabsProps) {
                     document.getElementById("manual-tab")?.click();
                   }}
                 >
-                  <div className="text-lg font-semibold mb-2">{preset.name}</div>
-                  <div className="text-sm text-muted-foreground">{preset.server}</div>
+                  <div className="text-lg font-semibold mb-2">
+                    {preset.name}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {preset.server}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
           <div className="p-6 border-t">
             <p className="text-sm text-muted-foreground">
-              Select a preset to pre-fill the server details, then complete your account information
+              Select a preset to pre-fill the server details, then complete your
+              account information
             </p>
           </div>
         </div>

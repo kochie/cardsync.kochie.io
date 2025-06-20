@@ -1,43 +1,26 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { FormEvent, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Facebook, Loader2, Users } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { createUserWithEmailAndPassword, getAuth } from "firebase/auth"
-import { app } from "@/firebase"
-import { Label } from "@/components/ui/fieldset"
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Facebook, Loader2, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Field, Label } from "@/components/ui/fieldset";
+import { handleRegister } from "@/actions/signup";
 
 export default function SignupPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false);
+  const [name, setName] = useState("");
+  // const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [agreeTerms, setAgreeTerms] = useState(false)
-  const router = useRouter()
-
-  async function handleRegister(event: FormEvent) {
-    event.preventDefault();
-
-
-    if (password !== confirmation) {
-      return;
-    }
-
-    try {
-      await createUserWithEmailAndPassword(getAuth(app), email, password);
-      router.push("/login");
-    } catch (e) {
-      console.error("Error creating user:", e);
-    }
-  }
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-blue-50">
@@ -73,9 +56,12 @@ export default function SignupPage() {
               />
             </div>
             <div className="text-center mt-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Join ContactSync Today!</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                Join ContactSync Today!
+              </h2>
               <p className="text-gray-600 max-w-md">
-                Create an account to start syncing your contacts across all platforms and keep your network organized.
+                Create an account to start syncing your contacts across all
+                platforms and keep your network organized.
               </p>
             </div>
           </div>
@@ -83,8 +69,12 @@ export default function SignupPage() {
           <div className="w-full max-w-md mx-auto">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100 p-6 sm:p-8">
               <div className="mb-6 text-center md:text-left">
-                <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-                <p className="text-gray-600 mt-1">Fill in the details below to get started</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Create your account
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Fill in the details below to get started
+                </p>
               </div>
 
               <div className="space-y-4 mb-6">
@@ -92,11 +82,11 @@ export default function SignupPage() {
                   outline
                   className="w-full h-11 flex items-center justify-center gap-2 hover:bg-gray-50"
                   onClick={() => {
-                    setIsLoading(true)
+                    setIsLoading(true);
                     setTimeout(() => {
-                      setIsLoading(false)
-                      router.push("/dashboard")
-                    }, 1500)
+                      setIsLoading(false);
+                      router.push("/dashboard");
+                    }, 1500);
                   }}
                   disabled={isLoading}
                 >
@@ -145,62 +135,79 @@ export default function SignupPage() {
                     <span className="w-full border-t border-gray-300"></span>
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                    <span className="bg-white px-2 text-gray-500">
+                      Or continue with
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <form onSubmit={handleRegister} className="space-y-4">
+              <form action={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="John Doe"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-11"
-                  />
+                  <Field>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      type="text"
+                      placeholder="John Doe"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-11"
+                    />
+                  </Field>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11"
-                  />
+                  <Field>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      required
+                      className="h-11"
+                    />
+                  </Field>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11"
-                  />
-                  <p className="text-xs text-gray-500">Must be at least 8 characters long</p>
+                  <Field>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-11"
+                    />
+                  </Field>
+                  <p className="text-xs text-gray-500">
+                    Must be at least 8 characters long
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    type="password"
-                    name="confirm-password"
-                    value={confirmation}
-                    onChange={(e) => setConfirmation(e.target.value)}
-                    id="confirm-password"
-                    placeholder="••••••••"
-                    className="h-11"
-                    required
-                  />
-                  <p className="text-xs text-gray-500">Must be at least 8 characters long</p>
+                  <Field>
+                    {" "}
+                    <Label htmlFor="confirm-password">Password</Label>
+                    <Input
+                      type="password"
+                      name="confirm-password"
+                      value={confirmation}
+                      onChange={(e) => setConfirmation(e.target.value)}
+                      id="confirm-password"
+                      placeholder="••••••••"
+                      className="h-11"
+                      required
+                    />
+                  </Field>
+
+                  <p className="text-xs text-gray-500">
+                    Must be at least 8 characters long
+                  </p>
                 </div>
                 <div className="flex items-start space-x-2">
                   <Checkbox
@@ -209,13 +216,22 @@ export default function SignupPage() {
                     onChange={(checked) => setAgreeTerms(checked as boolean)}
                     className="mt-1"
                   />
-                  <label htmlFor="terms" className="text-sm text-gray-600 leading-tight">
+                  <label
+                    htmlFor="terms"
+                    className="text-sm text-gray-600 leading-tight"
+                  >
                     I agree to the{" "}
-                    <Link href="/terms" className="font-medium text-purple-600 hover:text-purple-800">
+                    <Link
+                      href="/terms"
+                      className="font-medium text-purple-600 hover:text-purple-800"
+                    >
                       Terms of Service
                     </Link>{" "}
                     and{" "}
-                    <Link href="/privacy" className="font-medium text-purple-600 hover:text-purple-800">
+                    <Link
+                      href="/privacy"
+                      className="font-medium text-purple-600 hover:text-purple-800"
+                    >
                       Privacy Policy
                     </Link>
                   </label>
@@ -239,7 +255,10 @@ export default function SignupPage() {
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
                   Already have an account?{" "}
-                  <Link href="/login" className="font-medium text-purple-600 hover:text-purple-800">
+                  <Link
+                    href="/auth/login"
+                    className="font-medium text-purple-600 hover:text-purple-800"
+                  >
                     Log in
                   </Link>
                 </p>
@@ -247,7 +266,10 @@ export default function SignupPage() {
             </div>
 
             <div className="mt-8 text-center">
-              <Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-purple-600">
+              <Link
+                href="/"
+                className="inline-flex items-center text-sm text-gray-600 hover:text-purple-600"
+              >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to home
               </Link>
@@ -256,5 +278,5 @@ export default function SignupPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

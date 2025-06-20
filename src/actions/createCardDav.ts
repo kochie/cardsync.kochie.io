@@ -1,17 +1,8 @@
 "use server";
 
-// import { createCardDav } from "@/lib/carddav";
 import { redirect } from "next/navigation";
-import { app } from "@/firebase";
-import {
-  addDoc,
-  collection,
-  getFirestore,
-} from "firebase/firestore";
-
-
 import { z } from "zod";
-import { getUser } from "./userUtil";
+import { createClient } from "@/utils/supabase/server";
 
 const schema = z.object({
   username: z.string(),
@@ -29,8 +20,6 @@ const schema = z.object({
 
 
 export async function createCardDavAction(prevState: object, formData: FormData) {
-  console.log(formData);
-  const db = getFirestore(app);
 
   const validatedFields = schema.safeParse({
     server: formData.get("server"),
@@ -54,21 +43,30 @@ export async function createCardDavAction(prevState: object, formData: FormData)
   }
 
   try {
-    const user = await getUser()
+    const supabase = await createClient()
 
-    await addDoc(collection(db, "users", user.uid, "carddav"), {
+    const {error} = await supabase.from("carddav_connections").insert([{
       server: validatedFields.data.server,
       name: validatedFields.data.name,
       username: validatedFields.data.username,
       password: validatedFields.data.password,
-      syncFrequency: validatedFields.data.syncFrequency,
-      useSSL: validatedFields.data.useSSL,
+      sync_frequency: validatedFields.data.syncFrequency,
+      use_ssl: validatedFields.data.useSSL,
       description: validatedFields.data.description,
-      addressBookPath: validatedFields.data.addressBookPath,
-      syncAllContacts: validatedFields.data.syncAllContacts,
-      syncGroups: validatedFields.data.syncGroups,
-      syncPhotos: validatedFields.data.syncPhotos,
-    });
+      address_book_path: validatedFields.data.addressBookPath,
+      sync_all_contacts: validatedFields.data.syncAllContacts,
+      sync_groups: validatedFields.data.syncGroups,
+      sync_photos: validatedFields.data.syncPhotos,
+      contact_count: 0, // Initial count, will be updated later
+      status: "connected", // Initial status
+    }])
+
+    if (error) {
+      console.error("Error inserting CardDAV connection:", error);
+      return {
+        errors: error.message
+      };
+    }
   } catch (error) {
     console.error("Error verifying cookies:", error);
 

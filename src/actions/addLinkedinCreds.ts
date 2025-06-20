@@ -1,15 +1,12 @@
 "use server";
 
 import { parse } from "cookie";
-import { getAdminDB } from "@/lib/firebaseAdmin";
-import { getUser } from "./getUser";
+import { createClient } from "@/utils/supabase/server";
 
 export interface ActionState {
   error?: string;
   success?: string;
 }
-
-const db = getAdminDB();
 
 export async function addLinkedinCookie(
   cookieData: string,
@@ -20,11 +17,7 @@ export async function addLinkedinCookie(
       error: "No cookie data provided",
     };
 
-  const user = await getUser();
-  if (!user)
-    return {
-      error: "User not authenticated",
-    };
+  const supabase = await createClient();
 
   const cookies = parse(cookieData.toString());
   const sessionId = cookies["JSESSIONID"];
@@ -33,12 +26,23 @@ export async function addLinkedinCookie(
       error: "No session ID found in cookie data",
     };
 
-  db.collection(`users/${user.uid}/connections`).add({
-    provider: "linkedin",
-    sessionId: sessionId,
-    cookies: cookieData.toString(),
-    name: connectionName,
-  });
+  const { error } = await supabase
+    .from("linkedin_connections")
+    .insert([
+      {
+        session_id: sessionId,
+        cookies: cookieData.toString(),
+        name: connectionName,
+        number_contacts: 0,
+        sync_frequency: "manual",
+      },
+    ]);
+
+  if (error) {
+    return {
+      error: `Failed to add cookie: ${error.message}`,
+    };
+  }
 
   return {
     success: "Cookie added successfully",

@@ -1,16 +1,20 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { onSnapshot, getFirestore, collection } from "firebase/firestore";
-import { app } from "@/firebase";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import { Badge, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useAuth } from "@/context/AuthProvider";
 import { deleteCardDavAction } from "@/actions/deleteCardDav";
 import { cardDavSyncPull, cardDavSyncPush } from "@/actions/cardDavSync";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload, faRefresh, faUpload } from "@fortawesome/free-solid-svg-icons";
+import {
+  faDownload,
+  faRefresh,
+  faUpload,
+} from "@fortawesome/free-solid-svg-icons";
 import { CardDav } from "@/models/carddav";
+import { createClient } from "@/utils/supabase/client";
+import { useUser } from "@/app/context/userContext";
+import camelcaseKeys from "camelcase-keys";
 
 export default function CardDavConnection() {
   return (
@@ -25,27 +29,37 @@ export default function CardDavConnection() {
 
 function CardDAVAccountsList() {
   const [accounts, setAccounts] = useState<CardDav[]>([]);
-  const db = getFirestore(app);
+  const supabase = createClient();
+  const { user } = useUser();
 
-  const { user } = useAuth();
-
-  useEffect(() => {
+  const getAccounts = useCallback(async () => {
     if (!user) {
       return;
     }
 
-    return onSnapshot(
-      collection(db, "users", user.uid, "carddav"),
-      (snapshot) => {
-        // console.log("Snapshot data:", snapshot.data());
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setAccounts(data as CardDav[]);
-      }
+    const { data, error } = await supabase
+      .from("carddav_connections")
+      .select("*");
+
+    if (error) {
+      console.error("Error fetching CardDAV accounts:", error.message);
+      return;
+    }
+
+    setAccounts(
+      camelcaseKeys(
+        data.map((d) => ({
+          ...d,
+          last_synced: d.last_synced ? new Date(d.last_synced) : undefined,
+        })),
+        { deep: true }
+      )
     );
-  }, [db, user]);
+  }, [supabase, user]);
+
+  useEffect(() => {
+    getAccounts();
+  }, [getAccounts]);
 
   return (
     <div className="space-y-4">
@@ -100,7 +114,7 @@ function SyncButtons({ id }: { id: string }) {
   async function onPull() {
     setPending(true);
     try {
-      await cardDavSyncPull(id)
+      await cardDavSyncPull(id);
     } finally {
       setPending(false);
     }
@@ -109,12 +123,11 @@ function SyncButtons({ id }: { id: string }) {
   async function onPush() {
     setPending(true);
     try {
-      await cardDavSyncPush(id)
+      await cardDavSyncPush(id);
     } finally {
       setPending(false);
     }
   }
-
 
   return (
     <>
@@ -127,7 +140,7 @@ function SyncButtons({ id }: { id: string }) {
       >
         {pending ? (
           <>
-            <FontAwesomeIcon icon={faRefresh} spin className="h-4 w-4" /> 
+            <FontAwesomeIcon icon={faRefresh} spin className="h-4 w-4" />
             <span className="sr-only">Syncing...</span>
           </>
         ) : (
@@ -137,7 +150,7 @@ function SyncButtons({ id }: { id: string }) {
           </>
         )}
       </Button>
-            <Button
+      <Button
         outline
         type="submit"
         disabled={pending}
@@ -146,7 +159,7 @@ function SyncButtons({ id }: { id: string }) {
       >
         {pending ? (
           <>
-            <FontAwesomeIcon icon={faRefresh} spin className="h-4 w-4" /> 
+            <FontAwesomeIcon icon={faRefresh} spin className="h-4 w-4" />
             <span className="sr-only">Syncing...</span>
           </>
         ) : (
@@ -156,8 +169,8 @@ function SyncButtons({ id }: { id: string }) {
           </>
         )}
       </Button>
-</>  );
-  
+    </>
+  );
 }
 
 function DeleteButton({ id }: { id: string }) {

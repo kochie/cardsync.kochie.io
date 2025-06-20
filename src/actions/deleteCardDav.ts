@@ -1,17 +1,21 @@
-"use server"
+"use server";
 
-import { deleteDoc, doc, getFirestore } from "firebase/firestore";
-import { getUser } from "./userUtil"
-import { app } from "@/firebase";
+import { createClient } from "@/utils/supabase/server";
 
 export async function deleteCardDavAction(cardId: string) {
-    try {
-        const user = await getUser()
+  try {
+    const supabase = await createClient();
 
-        const db = getFirestore(app);
+    const { error } = await supabase
+      .from("carddav_connections")
+      .delete()
+      .eq("id", cardId);
 
-        await deleteDoc(doc(db, "users", user.uid, "carddav", cardId));
-    } catch (error) {
-        console.error("Error deleting CardDav account:", error);
+    if (error) {
+      console.error("Error deleting CardDav account:", error);
+      return { error: "Failed to delete CardDav account." };
     }
+  } catch (error) {
+    console.error("Error deleting CardDav account:", error);
+  }
 }
