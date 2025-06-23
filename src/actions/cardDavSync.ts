@@ -124,7 +124,7 @@ async function updateConnection(cardId: string, contactCount: number) {
       contact_count: contactCount,
       last_synced: new Date().toISOString(),
     })
-    .eq("id", cardId)
+    .eq("id", cardId);
 
   if (error) {
     console.error("Error updating CardDAV connection:", error);
@@ -138,6 +138,13 @@ async function updateConnection(cardId: string, contactCount: number) {
 export async function cardDavSyncPull(cardId: string) {
   // Discover address books
   const supabase = await createClient();
+
+  await supabase
+    .from("carddav_connections")
+    .update({
+      status: "syncing",
+    })
+    .eq("id", cardId);
 
   try {
     const { client } = await getCardDavSettings(cardId);
@@ -221,11 +228,24 @@ export async function cardDavSyncPull(cardId: string) {
       await updateConnection(cardId, contacts.length);
     }
   } catch (error) {
+    await supabase
+      .from("carddav_connections")
+      .update({
+        status: "sync error",
+      })
+      .eq("id", cardId);
     console.error("Error during CardDAV sync:", error);
     return {
       error,
     };
   }
+  
+  await supabase
+    .from("carddav_connections")
+    .update({
+      status: "connected",
+    })
+    .eq("id", cardId);
 }
 
 export async function cardDavSyncPush(

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useState } from "react";
-import { Badge, RefreshCw, Settings, Trash2 } from "lucide-react";
+import { RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { deleteCardDavAction } from "@/actions/deleteCardDav";
 import { cardDavSyncPull, cardDavSyncPush } from "@/actions/cardDavSync";
@@ -15,6 +15,8 @@ import { CardDav } from "@/models/carddav";
 import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/app/context/userContext";
 import camelcaseKeys from "camelcase-keys";
+import { Badge } from "../ui/badge";
+import { Tables } from "@/types/database.types";
 
 export default function CardDavConnection() {
   return (
@@ -24,6 +26,26 @@ export default function CardDavConnection() {
         <CardDAVAccountsList />
       </div>
     </div>
+  );
+}
+
+function Status({ status }: { status: string }) {
+  const statusMap: Record<string, { label: string; color: string }> = {
+    connected: { label: "Connected", color: "green" },
+    disconnected: { label: "Disconnected", color: "amber" },
+    syncing: { label: "Syncing", color: "yellow" },
+    error: { label: "Error", color: "red" },
+  };
+
+  const currentStatus = statusMap[status] || {
+    label: "Unknown",
+    color: "bg-gray-100 text-gray-800",
+  };
+
+  return (
+    <Badge color={currentStatus.color} className={`px-2 py-1 text-xs`}>
+      {currentStatus.label}
+    </Badge>
   );
 }
 
@@ -58,8 +80,57 @@ function CardDAVAccountsList() {
   }, [supabase, user]);
 
   useEffect(() => {
+    const channels = supabase
+      .channel("custom-all-channel")
+      .on<Tables<"carddav_connections">>(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "carddav_connections" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setAccounts((prev) =>
+              prev.filter((account) => account.id !== payload.old.id)
+            );
+          } else if (payload.eventType === "INSERT") {
+            setAccounts((prev) => [
+              ...prev,
+              camelcaseKeys(
+                {
+                  ...payload.new,
+                  last_synced: payload.new.last_synced
+                    ? new Date(payload.new.last_synced)
+                    : undefined,
+                },
+                { deep: true }
+              ),
+            ]);
+          } else if (payload.eventType === "UPDATE") {
+            setAccounts((prev) =>
+              prev.map((account) =>
+                account.id === payload.new?.id
+                  ? camelcaseKeys(
+                      {
+                        ...payload.new,
+                        last_synced: payload.new.last_synced
+                          ? new Date(payload.new.last_synced)
+                          : undefined,
+                      },
+                      { deep: true }
+                    )
+                  : account
+              )
+            );
+          }
+          console.log("Change received!", payload);
+        }
+      )
+      .subscribe();
+
     getAccounts();
-  }, [getAccounts]);
+
+    return () => {
+      channels.unsubscribe();
+    };
+  }, [getAccounts, supabase]);
 
   return (
     <div className="space-y-4">
@@ -80,8 +151,8 @@ function CardDAVAccountsList() {
             </div>
             <div className="text-sm text-right space-y-1">
               <div>{account.contactCount} contacts</div>
-              <div>Last sync: {account.lastSynced?.toISOString()}</div>
-              <Badge>{account.status}</Badge>
+              <div>Last sync: {account.lastSynced?.toLocaleString()}</div>
+              <Status status={account.status} />
             </div>
             <div className="ml-4 flex gap-2">
               <SyncButtons id={account.id} />
