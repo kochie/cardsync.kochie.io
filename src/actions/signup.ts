@@ -6,13 +6,7 @@ import { redirect } from "next/navigation";
 
 export async function handleRegister(formData: FormData) {
   const supabase = await createClient();
-
-  console.log("Registering user with form data:", {
-    email: formData.get("email"),
-    name: formData.get("name"),
-    password: formData.get("password"),
-  });
-
+  
   const { error } = await supabase.auth.signUp({
     email: formData.get("email") as string,
     password: formData.get("password") as string,

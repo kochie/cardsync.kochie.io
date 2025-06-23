@@ -134,7 +134,6 @@ export default function ContactFlyover({
     if (!editableContact) return;
 
     setIsSaving(true);
-    // console.log("Saving contact:", selectedLinkedInUrn);
     const { error } = await supabase
       .from("carddav_contacts")
       .update({
@@ -160,11 +159,6 @@ export default function ContactFlyover({
   const { user } = useUser();
 
   if (!contact || !user) return null;
-
-  console.log("Rendering ContactFlyover with contact:", contact);
-
-  // console.log("ContactFlyover rendered with contact:", contact);
-  // console.log(supabase.storage.from("assets").getPublicUrl(`users/${user.id}/contacts/${contact.id}`))
 
   return (
     <Dialog as="div" className="relative z-50" onClose={onClose} open={open}>

@@ -2,54 +2,10 @@
 
 import { Contact } from "@/models/contacts";
 import { createClient } from "@/utils/supabase/server";
-import { createHash } from "crypto";
 import camelcaseKeys from "camelcase-keys";
-import { Buffer } from "buffer";
 import { createDAVClient } from "tsdav";
-
-async function generateHash(buffer: Buffer): Promise<string> {
-  return createHash("sha256").update(buffer).digest("base64");
-}
-
-async function uploadImageToSupabase(
-  contactId: string,
-  userId: string,
-  photoBuffer: Buffer
-): Promise<void> {
-  const supabase = await createClient();
-
-  const path = `users/${userId}/contacts/${contactId}`.toLowerCase();
-
-  const doesExist = await supabase.storage.from("assets").exists(path);
-
-  let alreadyUploaded = false;
-  if (doesExist.data.valueOf() && !doesExist.error) {
-    // Need to check the db metadata to find the hash of the photo
-    const info = await supabase.storage.from("assets").info(path);
-    if (info.error) {
-      console.error(`Failed to get info for contact ${contactId}:`, info.error);
-      return;
-    }
-    alreadyUploaded =
-      info.data.metadata?.["hash"] === (await generateHash(photoBuffer));
-  }
-
-  if (!alreadyUploaded) {
-    const { error } = await supabase.storage
-      .from("assets")
-      .upload(path, photoBuffer, {
-        contentType: "image/jpeg",
-        upsert: true,
-        metadata: {
-          hash: await generateHash(photoBuffer),
-        },
-      });
-    if (error) {
-      console.error(`Failed to upload photo for contact ${contactId}:`, error);
-      throw new Error("Failed to upload photo");
-    }
-  }
-}
+import { Group } from "@/models/groups";
+import { AddressBook } from "@/models/addressBook";
 
 async function saveContacts(contacts: Contact[]): Promise<void> {
   const supabase = await createClient();
@@ -69,24 +25,8 @@ async function saveContacts(contacts: Contact[]): Promise<void> {
   for (const contact of contacts) {
     // If the contact has a photo, upload it to Cloud Storage
 
-    for await (const photo of contact.photos) {
-      try {
-        if (!photo || !photo.data) continue;
-        const photoBuffer = Buffer.from(photo.data, "base64");
-        if (photoBuffer.length === 0) {
-          console.warn(`No valid photo data for contact ${contact.id}`);
-          continue;
-        }
-        await uploadImageToSupabase(
-          contact.id,
-          userResponse.data.user.id,
-          photoBuffer
-        );
-      } catch (e) {
-        console.error(`Failed to upload photo for contact ${contact.id}:`, e);
-      }
-    }
-    process.stdout.write(".");
+    const result = await contact.savePhoto(supabase);
+    process.stdout.write(result ? "." : "x");
   }
 
   console.log("\nUploading photos completed");
@@ -99,6 +39,45 @@ async function saveContacts(contacts: Contact[]): Promise<void> {
     throw new Error("Failed to save contacts");
   }
   console.log(`Saved ${contacts.length} contacts to the database`);
+}
+
+async function saveGroups(groups: Group[]): Promise<void> {
+  const supabase = await createClient();
+
+  const { error: upsertGroupError } = await supabase
+    .from("carddav_groups")
+    .upsert(
+      groups
+        .filter((group) => !group.readonly)
+        .map((group) => group.toDatabaseObject()),
+      { onConflict: "id" }
+    );
+
+  if (upsertGroupError) {
+    console.error("Error saving groups to database:", upsertGroupError);
+    throw new Error("Failed to save groups");
+  }
+
+  const { error: upsertMembersError } = await supabase
+    .from("carddav_group_members")
+    .upsert(
+      groups.flatMap((group) =>
+        group.memberIds.map((member) => ({
+          member_id: member,
+          group_id: group.id,
+          address_book: group.addressBookId,
+        }))
+      ),
+      { onConflict: "member_id,group_id,address_book" }
+    );
+
+  if (upsertMembersError) {
+    console.error(
+      "Error saving group members to database:",
+      upsertMembersError
+    );
+    throw new Error("Failed to save group members");
+  }
 }
 
 async function getCardDavSettings(cardId: string) {
@@ -117,8 +96,6 @@ async function getCardDavSettings(cardId: string) {
   }
 
   const settings = camelcaseKeys(data, { deep: true });
-
-  console.log("CardDAV settings:", settings);
 
   const baseUrl = new URL(
     `${settings.useSsl ? "https" : "http"}://${settings.server}`
@@ -141,14 +118,13 @@ async function getCardDavSettings(cardId: string) {
 async function updateConnection(cardId: string, contactCount: number) {
   const supabase = await createClient();
 
-  const { error, data } = await supabase
+  const { error } = await supabase
     .from("carddav_connections")
     .update({
       contact_count: contactCount,
       last_synced: new Date().toISOString(),
     })
     .eq("id", cardId)
-    .select();
 
   if (error) {
     console.error("Error updating CardDAV connection:", error);
@@ -157,7 +133,6 @@ async function updateConnection(cardId: string, contactCount: number) {
   console.log(
     `Updated CardDAV connection ${cardId} with ${contactCount} contacts`
   );
-  console.log("Updated connection data:", data);
 }
 
 export async function cardDavSyncPull(cardId: string) {
@@ -190,26 +165,29 @@ export async function cardDavSyncPull(cardId: string) {
       throw new Error("Failed to save address books");
     }
 
-    for await (const addressBook of addressBooks) {
-      const cards = await client.fetchVCards({ addressBook });
+    for await (const davAddressBook of addressBooks) {
+      const cards = await client.fetchVCards({ addressBook: davAddressBook });
 
       const addressBookInfo = addressBookData.find(
-        (book) => book.url === addressBook.url && book.connection_id === cardId
+        (book) =>
+          book.url === davAddressBook.url && book.connection_id === cardId
       );
       if (!addressBookInfo) {
         console.warn(
-          `Address book not found in database: ${addressBook.displayName}`
+          `Address book not found in database: ${davAddressBook.displayName}`
         );
         continue;
       }
       console.log(
-        `Found ${cards.length} cards in address book: ${addressBook.displayName}`
+        `Found ${cards.length} cards in address book: ${davAddressBook.displayName}`
       );
 
-      const contacts = await Contact.fromDavObjects(cards, addressBookInfo.id);
+      const addressBook = AddressBook.fromDatabaseObject(addressBookInfo);
+      const contacts = await Contact.fromDavObjects(cards, addressBook);
+      const groups = Group.fromDavObjects(cards, addressBook);
 
       console.log(
-        `Found ${contacts.length} contacts in address book: ${addressBook.displayName}`
+        `Found ${contacts.length} contacts in address book: ${addressBook.name}`
       );
 
       // print contacts with duplicate ids
@@ -219,7 +197,7 @@ export async function cardDavSyncPull(cardId: string) {
       if (duplicateIds.length > 0) {
         console.warn(
           `Found duplicate contact IDs in address book ${
-            addressBook.displayName
+            addressBook.name
           }: ${duplicateIds.join(", ")}`
         );
       }
@@ -232,10 +210,12 @@ export async function cardDavSyncPull(cardId: string) {
           `Saving contacts ${i + 1} to ${Math.min(
             i + 50,
             contacts.length
-          )} in address book: ${addressBook.displayName}`
+          )} in address book: ${addressBook.name}`
         );
         await saveContacts(contactGroup);
       }
+
+      await saveGroups(groups);
 
       // await saveContacts(contacts);
       await updateConnection(cardId, contacts.length);
@@ -262,14 +242,8 @@ export async function cardDavSyncPush(
       .select(
         `
           *,
-          linkedin_contacts( public_identifier ),
-          carddav_addressbooks (
-            id,
-            connection_id,
-            carddav_connections (
-              id
-            )
-          )
+          linkedin_contacts(*),
+          carddav_addressbooks (*)
         `
       )
       .eq("carddav_addressbooks.connection_id", cardId);

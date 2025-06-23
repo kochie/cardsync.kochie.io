@@ -31,16 +31,15 @@ export function Avatar({
       className={clsx(
         className,
         // Basic layout
-        "inline-grid shrink-0 align-middle [--avatar-radius:20%] *:col-start-1 *:row-start-1",
+        "inline-grid shrink-0 align-middle overflow-hidden isolate [--avatar-radius:20%] *:col-start-1 *:row-start-1",
         "outline outline-offset-1 outline-black/10 dark:outline-white/10",
-        "relative",
-        // Border radius
+        "relative",        // Border radius
         square
           ? "rounded-(--avatar-radius) *:rounded-(--avatar-radius)"
           : "rounded-full *:rounded-full"
       )}
     >
-      {initials && (
+      {!blurDataURL && initials && (
         <svg
           className="size-full fill-current p-[5%] text-[48px] font-medium uppercase select-none"
           viewBox="0 0 100 100"
@@ -59,15 +58,16 @@ export function Avatar({
           </text>
         </svg>
       )}
-      {src && (
+
+      {blurDataURL && src && (
         <Image
-          className="size-full aspect-square object-cover"
+          className="size-full object-cover"
           loader={supabaseLoader}
           src={src}
-          alt={""}
+          alt={alt}
           fill
           blurDataURL={blurDataURL}
-          placeholder={blurDataURL ? "blur" : "empty"}
+          placeholder="blur"
         />
       )}
     </span>

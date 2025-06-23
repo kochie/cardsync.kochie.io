@@ -176,28 +176,31 @@ export type Database = {
           },
         ]
       }
-      group_members: {
+      carddav_group_members: {
         Row: {
           address_book: string
-          id: number
+          group_id: string
           member_id: string
+          user_id: string
         }
         Insert: {
           address_book: string
-          id?: number
+          group_id: string
           member_id: string
+          user_id?: string
         }
         Update: {
           address_book?: string
-          id?: number
+          group_id?: string
           member_id?: string
+          user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "group_members_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "groups"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "carddav_groups"
             referencedColumns: ["id"]
           },
           {
@@ -209,23 +212,49 @@ export type Database = {
           },
         ]
       }
-      groups: {
+      carddav_groups: {
         Row: {
+          address_book: string
           created_at: string
-          id: number
+          description: string | null
+          id: string
+          id_is_uppercase: boolean
           name: string | null
+          readonly: boolean
+          updated_at: string
+          user_id: string
         }
         Insert: {
+          address_book: string
           created_at?: string
-          id?: number
+          description?: string | null
+          id?: string
+          id_is_uppercase: boolean
           name?: string | null
+          readonly?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Update: {
+          address_book?: string
           created_at?: string
-          id?: number
+          description?: string | null
+          id?: string
+          id_is_uppercase?: boolean
           name?: string | null
+          readonly?: boolean
+          updated_at?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "groups_address_book_fkey"
+            columns: ["address_book"]
+            isOneToOne: false
+            referencedRelation: "carddav_addressbooks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       linkedin_connections: {
         Row: {

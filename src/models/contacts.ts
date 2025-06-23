@@ -1,87 +1,17 @@
-import { getPlaiceholder } from "plaiceholder";
 import { DAVVCard } from "tsdav";
-import { createClient } from "@/utils/supabase/server";
-import { VCard, VCardProperty } from "@/utils/vcard/vcard";
-import { randomUUID } from "crypto";
+import {
+  parseVCardTimestamp,
+  toVCardTimestamp,
+  VCard,
+  VCardProperty,
+} from "@/utils/vcard/vcard";
 import { Tables } from "@/types/database.types";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { AddressBook } from "./addressBook";
+import { uploadImageToSupabase } from "@/utils/storage";
+import { getImageData, Photo } from "@/utils/image";
 
-type Photo =
-  | { data: string; type: string; blurDataUrl?: string; url?: string }
-  | { url: string; type: string; blurDataUrl?: string; data?: undefined };
-
-function parseVCardTimestamp(vcardTimestamp: string) {
-  // Format: YYYYMMDDTHHMMSSZ
-  const isoString = vcardTimestamp.replace(
-    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
-    "$1-$2-$3T$4:$5:$6Z"
-  );
-  return new Date(isoString);
-}
-
-function toVCardTimestamp(date = new Date()) {
-  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-}
-
-export async function parseVCardPhoto(contactId: string): Promise<Photo[]> {
-  // 2.1: PHOTO;JPEG:http://example.com/photo.jpg
-  // 2.1: PHOTO;JPEG;ENCODING=BASE64:[base64-data]
-  // 3.0: PHOTO;TYPE=JPEG;VALUE=URI:http://example.com/photo.jpg
-  // 3.0: PHOTO;TYPE=JPEG;ENCODING=b:[base64-data]
-  // 4.0: PHOTO;MEDIATYPE=image/jpeg:http://example.com/photo.jpg
-  // 4.0: PHOTO;ENCODING=BASE64;TYPE=JPEG:[base64-data]
-
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) {
-    console.error("Failed to get user data:", userError);
-    throw new Error("Failed to get user data");
-  }
-  const userId = userData.user.id;
-
-  const imagePath = `users/${userId}/contacts/${contactId}`.toLowerCase();
-
-  let photoExists = false;
-  try {
-    const { data, error } = await supabase.storage
-      .from("assets")
-      .exists(imagePath);
-    if (!error && data) {
-      photoExists = data.valueOf();
-    }
-  } catch {
-    photoExists = false;
-  }
-
-  if (photoExists) {
-    const { data, error } = await supabase.storage
-      .from("assets")
-      .download(imagePath);
-    if (error) {
-      console.error(
-        `Failed to download photo for contact ${contactId}:`,
-        error
-      );
-      throw new Error("Failed to download photo");
-    }
-
-    // Create a data URL from the downloaded file
-    // const dataUrl = URL.createObjectURL(data);
-
-    const buffer = Buffer.from(await data.arrayBuffer());
-    const { base64 } = await getPlaiceholder(buffer);
-
-    return [
-      {
-        data: await createDataUrl(data),
-        type: data.type,
-        blurDataUrl: base64,
-      },
-    ];
-  }
-  return []; // No photo found for the contact
-
-  // Check if the photo is a base64 encoded string
-}
+// Check if the photo is a base64 encoded string
 
 async function createDataUrl(blob: Blob): Promise<string> {
   return blob.arrayBuffer().then((buffer) => {
@@ -98,13 +28,13 @@ export interface ContactModel {
   phones: VCardProperty[]; // [ TEL;TYPE=work,voice:1-514-123-4567 ]
   photoUrl?: string; // URL to the contact's photo saved in google cloud storage
   lastUpdated?: Date; // Last updated date in ISO format
-  photos: Photo[]; // Base64 encoded photo data
+  photos?: Photo[]; // Base64 encoded photo data
   company?: string; // Company name
   title?: string; // Job title
   role?: string; // Job title
   linkedinContact?: string; // Optional, used for tracking connections
   photoBlurUrl?: string; // Optional, used for tracking connections
-  addressBook: string; // Optional, used for tracking connections
+  addressBook: AddressBook; // Optional, used for tracking connections
   birthday?: Date;
 }
 
@@ -120,14 +50,14 @@ export class Contact {
   #addresses: VCardProperty[]; // [ ADR;TYPE=work:;;123 Main St;City;State;12345;Country ]
   #emails: VCardProperty[]; // [ EMAIL;TYPE=work:
   #phones: VCardProperty[]; // [ TEL;TYPE=work,voice:1-514-123-4567 ]
-  #photos: Photo[]; // Base64 encoded photo data
+  #photos?: Photo[]; // Base64 encoded photo data
   #lastUpdated?: Date; // Last updated date in ISO format
   #company?: string; // Company name
   #title?: string; // Job title
   #role?: string; // Job title
   #linkedinContact?: string;
-  #addressBook: string; // Optional, used for tracking connections
   #birthday?: Date;
+  #addressBook: AddressBook;
 
   constructor({
     id,
@@ -159,9 +89,93 @@ export class Contact {
     this.#birthday = birthday;
   }
 
+  get name(): string {
+    return this.#name;
+  }
+
+  async savePhoto(supabase: SupabaseClient): Promise<boolean> {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error("Failed to get user data:", userError);
+      throw new Error("Failed to get user data");
+    }
+    const userId = userData.user.id;
+
+    const imagePath = `users/${userId}/contacts/${this.id}`.toLowerCase();
+
+    if (!this.#photos || this.#photos.length === 0) {
+      return false
+    }
+
+    if (!this.#photos[0].data) {
+      return false
+    }
+
+    await uploadImageToSupabase(
+      imagePath,
+      Buffer.from(this.#photos[0].data, "base64"),
+      supabase
+    );
+
+    return true
+  }
+
+  getPhotoUrl(supabase: SupabaseClient, userId: string): string {
+    const imagePath = `users/${userId}/contacts/${this.id}`.toLowerCase();
+
+    return supabase.storage.from("assets").getPublicUrl(imagePath).data.publicUrl;
+  }
+
+  async loadPhoto(supabase: SupabaseClient): Promise<void> {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error("Failed to get user data:", userError);
+      throw new Error("Failed to get user data");
+    }
+    const userId = userData.user.id;
+
+    const imagePath = `users/${userId}/contacts/${this.id}`.toLowerCase();
+
+    let photoExists = false;
+    try {
+      const { data, error } = await supabase.storage
+        .from("assets")
+        .exists(imagePath);
+      if (!error && data) {
+        photoExists = data.valueOf();
+      }
+    } catch {
+      photoExists = false;
+    }
+
+    if (photoExists) {
+      const { data, error } = await supabase.storage
+        .from("assets")
+        .download(imagePath);
+      if (error) {
+        console.error(
+          `Failed to download photo for contact ${this.id}:`,
+          error
+        );
+        throw new Error("Failed to download photo");
+      }
+
+      // const buffer = Buffer.from(await data.arrayBuffer());
+      // const { base64 } = await getPlaiceholder(buffer);
+
+      this.#photos = [
+        {
+          data: await createDataUrl(data),
+          type: data.type,
+          // blurDataUrl: base64,
+        },
+      ];
+    }
+  }
+
   static async fromDavObjects(
     objects: DAVVCard[],
-    addressBook: string
+    addressBook: AddressBook
   ): Promise<Contact[]> {
     const contacts: Contact[] = [];
 
@@ -228,7 +242,7 @@ export class Contact {
       vcard.add("tel", phone.value, phone.params);
     });
 
-    this.#photos.forEach((photo) => {
+    this.#photos?.forEach((photo) => {
       const params: Record<string, string[]> = {
         type: [photo.type],
       };
@@ -267,30 +281,11 @@ export class Contact {
       ); // Format as YYYYMMDD
     }
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("carddav_contacts")
-      .select(
-        `id,carddav_addressbooks (
-            id,
-            connection_id,
-            url,
-            carddav_connections (
-              id
-            )
-          )`
-      )
-      .eq("address_book", this.#addressBook)
-      .eq("id", this.id)
-      .single();
-    if (error) {
-      console.error("Error fetching contact data:", error);
-      throw new Error("Failed to fetch contact data from database");
-    }
+    const url = new URL(`${this.id}.vcf`, this.#addressBook.url).toString();
 
     return {
       // addressData: vcard.toString(),
-      url: `${data.carddav_addressbooks.url}${this.id}.vcf`, // Assuming the URL format for the contact
+      url: url, // Assuming the URL format for the contact
       data: vcard.stringify(),
       // etag: (this.lastUpdated?.getTime() ?? new Date().getTime()).toString()
     } as DAVVCard;
@@ -304,11 +299,8 @@ export class Contact {
    */
   static async fromVcard(
     contact: DAVVCard,
-    addressBook: string
+    addressBook: AddressBook
   ): Promise<Contact> {
-    // console.log("Converting VCard to Contact:", contact);
-    // console.log(contact.data);
-
     const cards = VCard.parse(contact.data);
     if (cards.length === 0) {
       throw new Error("No valid vCard data found");
@@ -317,42 +309,13 @@ export class Contact {
       console.warn("Multiple vCards found, using the first one");
     }
     const card = cards[0];
-    // console.log(inspect(card, { depth: null, colors: true }));
-
-    // console.log("Parsed VCard:", cards);
 
     const addresses = card.has("adr") ? card.get("adr") : [];
     const emails = card.has("email") ? card.get("email") : [];
     const phones = card.has("tel") ? card.get("tel") : [];
 
     const photos = card.has("photo")
-      ? await Promise.all(
-          card.get("photo").map(async (p) => {
-            const isEmbedded = !p.value.startsWith("http");
-            if (isEmbedded) {
-              const { base64 } = await getPlaiceholder(
-                Buffer.from(p.value, "base64")
-              );
-
-              return {
-                data: p.value, // If the photo is a URL, keep it as undefined
-                type: p.params.type?.[0] ?? "image/jpeg", // Default to jpeg if no type is specified
-                blurDataUrl: base64,
-              };
-            } else {
-              const data = await fetch(p.value); // Ensure the URL is valid, this will throw if the URL is not reachable
-              const { base64 } = await getPlaiceholder(
-                Buffer.from(await data.arrayBuffer())
-              );
-
-              return {
-                url: p.value, // If the photo is a URL, keep it as undefined
-                type: p.params.type?.[0] ?? "image/jpeg", // Default to jpeg if no type is specified
-                blurDataUrl: base64,
-              };
-            }
-          })
-        )
+      ? await Promise.all(card.get("photo").map((photo) => getImageData(photo)))
       : [];
 
     const lastUpdated = (() => {
@@ -386,17 +349,27 @@ export class Contact {
     const birthday = (() => {
       if (card.has("BDAY")) {
         const bday = card.get("BDAY").value;
-        // Format: YYYYMMDD or MMDD
-        const year = bday.length === 8 ? bday.slice(0, 4) : "1900"; // Default to 1900 if year is not provided
-        const month = bday.length === 8 ? bday.slice(4, 6) : bday.slice(0, 2);
-        const day = bday.length === 8 ? bday.slice(6, 8) : bday.slice(2, 4);
-        return new Date(`${year}-${month}-${day}`);
+        if (/^(\d){8}$/.test(bday)) {
+          const year = bday.slice(0, 4) 
+          const month = bday.slice(4, 6)
+          const day = bday.slice(6, 8)
+          return new Date(`${year}-${month}-${day}`);
+        }
+        if (/^(\d){4}-(\d){2}-(\d){2}$/.test(bday)) {
+          const [year, month, day] = bday.split("-");
+          return new Date(`${year}-${month}-${day}`);
+        }
+        if (/^(\d){4}$/.test(bday)) {
+          const month = bday.slice(0, 2);
+          const day = bday.slice(2, 4);
+          return new Date(`1604-${month}-${day}`);
+        }
       }
       return undefined;
     })();
 
     return new Contact({
-      id: card.has("UID") ? card.get("UID").value : randomUUID(),
+      id: card.get("UID").value,
       name: card.get("FN").value,
       addresses,
       emails,
@@ -415,7 +388,7 @@ export class Contact {
   static async fromDatabaseObject(
     data: Tables<"carddav_contacts"> & {
       linkedin_contacts: { public_identifier: string | null } | null;
-      carddav_addressbooks: { id: string };
+      carddav_addressbooks: Tables<"carddav_addressbooks">;
     }
   ): Promise<Contact> {
     return new Contact({
@@ -423,7 +396,7 @@ export class Contact {
       addresses: data.addresses.map((adr) => VCardProperty.parse(adr)),
       emails: data.emails.map((email) => VCardProperty.parse(email)),
       phones: data.phones.map((phone) => VCardProperty.parse(phone)),
-      photos: await parseVCardPhoto(data.id),
+      photos: undefined,
       company: data.company ?? undefined,
       title: data.title ?? undefined,
       role: data.role ?? undefined,
@@ -433,7 +406,7 @@ export class Contact {
       linkedinContact: data.linkedin_contacts?.public_identifier ?? undefined,
       photoBlurUrl: data.photo_blur_url ?? undefined,
       lastUpdated: new Date(data.last_updated),
-      addressBook: data.carddav_addressbooks.id,
+      addressBook: AddressBook.fromDatabaseObject(data.carddav_addressbooks),
       birthday: data.birth_date ? new Date(data.birth_date) : undefined,
     });
   }
@@ -442,6 +415,16 @@ export class Contact {
     Tables<"carddav_contacts">,
     "user_id" | "created_at"
   > {
+    let photo_blur_url: string | null = null;
+
+    if (
+      this.#photos &&
+      this.#photos.length > 0 &&
+      this.#photos[0].blurDataUrl
+    ) {
+      photo_blur_url = this.#photos[0].blurDataUrl;
+    }
+
     return {
       id: this.id,
       name: this.#name,
@@ -454,9 +437,8 @@ export class Contact {
       linkedin_contact: null,
       last_updated:
         this.#lastUpdated?.toISOString() ?? new Date().toISOString(),
-      photo_blur_url:
-        this.#photos.length > 0 ? this.#photos[0].blurDataUrl ?? null : null,
-      address_book: this.#addressBook,
+      photo_blur_url,
+      address_book: this.#addressBook.id,
       id_is_uppercase: this.id === this.id.toUpperCase(),
       birth_date: this.#birthday
         ? this.#birthday.toISOString().split("T")[0] // Format as YYYY-MM-DD
@@ -482,7 +464,9 @@ export class Contact {
       );
 
     console.log(
-      `Added phone number: ${normalizedPhoneNumber} with type ${types} to contact ${this.#name}`
+      `Added phone number: ${normalizedPhoneNumber} with type ${types} to contact ${
+        this.#name
+      }`
     );
   }
 
@@ -497,10 +481,16 @@ export class Contact {
       emailAddress !== "null"
     ) {
       this.#emails.push(
-        new VCardProperty("EMAIL", { TYPE: types.map((type) => type.toLowerCase()) }, emailAddress)
+        new VCardProperty(
+          "EMAIL",
+          { TYPE: types.map((type) => type.toLowerCase()) },
+          emailAddress
+        )
       );
       console.log(
-        `Added email address: ${emailAddress} with type ${types} to contact ${this.#name}`
+        `Added email address: ${emailAddress} with type ${types} to contact ${
+          this.#name
+        }`
       );
     }
   }
@@ -513,6 +503,9 @@ function normalizePhoneNumber(phoneNumber: string): string {
   if (phoneNumber.startsWith("+61 04")) {
     phoneNumber = phoneNumber.replace("+61 04", "+614");
   }
+
+  // remove whitespace
+  phoneNumber = phoneNumber.replace(/\s+/g, "");
 
   // remove any non-digit characters except for +
   phoneNumber = phoneNumber.replace(/[^0-9+]/g, "");

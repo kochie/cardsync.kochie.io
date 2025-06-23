@@ -182,7 +182,6 @@ export async function linkedinSyncAction(connectionId: string) {
 
         start += count;
 
-        console.log("Fetched data:", data.elements.length);
         await uploadConnections(data.elements, profileData, connectionId);
       } catch (error) {
         console.error(error);
@@ -320,7 +319,6 @@ export async function mergeLinkedinContactsAction(
 
   // Here you would implement the logic to merge the contacts
   // For now, we just log them
-  console.log("Merging contacts:", contact);
 
   return {
     success: "Contacts merged successfully",

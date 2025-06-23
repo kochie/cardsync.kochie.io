@@ -32,7 +32,6 @@ async function getCards() {
     return;
   }
 
-  console.log('Address Book:', addressBook);
 }
 
 getCards().catch(console.error);

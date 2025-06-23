@@ -1,3 +1,17 @@
+export function parseVCardTimestamp(vcardTimestamp: string) {
+  // Format: YYYYMMDDTHHMMSSZ
+  const isoString = vcardTimestamp.replace(
+    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
+    "$1-$2-$3T$4:$5:$6Z"
+  );
+  return new Date(isoString);
+}
+
+export function toVCardTimestamp(date = new Date()) {
+  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+
 export class VCardProperty {
   key: string;
   params: Record<string, string[]>;
@@ -16,7 +30,7 @@ export class VCardProperty {
   }
 
   static parse(rawTextString: string) {
-    const [keyWithParams, value] = rawTextString.split(":", 2);
+    const [keyWithParams, ...value] = rawTextString.split(":");
     const [key, ...rest] = keyWithParams.split(";");
 
     const params: Record<string, string[]> = {};
@@ -31,7 +45,7 @@ export class VCardProperty {
       }
     }
 
-    return new VCardProperty(key.toUpperCase(), params, value);
+    return new VCardProperty(key.toUpperCase(), params, value.join(":"));
   }
 
   stringify(): string {
