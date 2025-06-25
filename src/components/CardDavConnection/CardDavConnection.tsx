@@ -11,11 +11,10 @@ import {
   faRefresh,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
-import { CardDav } from "@/models/carddav";
+import { CardDav, CardDavStatus } from "@/models/carddav";
 import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/app/context/userContext";
-import camelcaseKeys from "camelcase-keys";
-import { Badge } from "../ui/badge";
+import { Badge, BadgeProps } from "../ui/badge";
 import { Tables } from "@/types/database.types";
 
 export default function CardDavConnection() {
@@ -30,16 +29,16 @@ export default function CardDavConnection() {
 }
 
 function Status({ status }: { status: string }) {
-  const statusMap: Record<string, { label: string; color: string }> = {
-    connected: { label: "Connected", color: "green" },
-    disconnected: { label: "Disconnected", color: "amber" },
-    syncing: { label: "Syncing", color: "yellow" },
-    error: { label: "Error", color: "red" },
+  const statusMap: Record<string, { label: string; color: BadgeProps["color"] }> = {
+    [CardDavStatus.Connected]: { label: "Connected", color: "green" },
+    [CardDavStatus.Disconnected]: { label: "Disconnected", color: "amber" },
+    [CardDavStatus.Syncing]: { label: "Syncing", color: "yellow" },
+    [CardDavStatus.Error]: { label: "Error", color: "red" },
   };
 
   const currentStatus = statusMap[status] || {
     label: "Unknown",
-    color: "bg-gray-100 text-gray-800",
+    color: "fuchsia",
   };
 
   return (
@@ -68,15 +67,7 @@ function CardDAVAccountsList() {
       return;
     }
 
-    setAccounts(
-      camelcaseKeys(
-        data.map((d) => ({
-          ...d,
-          last_synced: d.last_synced ? new Date(d.last_synced) : undefined,
-        })),
-        { deep: true }
-      )
-    );
+    setAccounts(data.map((account) => CardDav.fromDatabaseObject(account)));
   }, [supabase, user]);
 
   useEffect(() => {
@@ -93,29 +84,13 @@ function CardDAVAccountsList() {
           } else if (payload.eventType === "INSERT") {
             setAccounts((prev) => [
               ...prev,
-              camelcaseKeys(
-                {
-                  ...payload.new,
-                  last_synced: payload.new.last_synced
-                    ? new Date(payload.new.last_synced)
-                    : undefined,
-                },
-                { deep: true }
-              ),
+              CardDav.fromDatabaseObject(payload.new),
             ]);
           } else if (payload.eventType === "UPDATE") {
             setAccounts((prev) =>
               prev.map((account) =>
                 account.id === payload.new?.id
-                  ? camelcaseKeys(
-                      {
-                        ...payload.new,
-                        last_synced: payload.new.last_synced
-                          ? new Date(payload.new.last_synced)
-                          : undefined,
-                      },
-                      { deep: true }
-                    )
+                  ? CardDav.fromDatabaseObject(payload.new)
                   : account
               )
             );
