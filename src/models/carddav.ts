@@ -1,4 +1,4 @@
-import { Tables } from "@/types/database.types";
+import { Tables } from "../types/database.types.ts";
 
 
 export enum CardDavStatus {

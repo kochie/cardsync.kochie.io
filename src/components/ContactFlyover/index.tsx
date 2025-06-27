@@ -26,8 +26,8 @@ import { useDebounce } from "@uidotdev/usehooks";
 import { createClient } from "@/utils/supabase/client";
 
 import { useUser } from "@/app/context/userContext";
-import { cardDavSyncPush } from "@/actions/cardDavSync";
-import { mergeLinkedinContactsAction } from "@/actions/linkedinSync";
+import { cardDavSyncPush } from "@/actions/carddav/sync";
+import { mergeLinkedinContactsAction } from "@/actions/connections/linkedinSync";
 import { Database } from "@/types/database.types";
 
 type ContactFlyoverProps = {

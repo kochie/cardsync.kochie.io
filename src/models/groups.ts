@@ -1,9 +1,11 @@
-import { Database, Tables } from "@/types/database.types";
-import { Contact } from "./contacts";
-import { DAVVCard } from "tsdav";
-import { parseVCardTimestamp, VCard } from "@/utils/vcard/vcard";
-import { AddressBook } from "./addressBook";
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { DAVVCard } from "tsdav";
+
+import type { Database, Tables } from "../types/database.types.ts";
+
+import { parseVCardTimestamp, VCard } from "../utils/vcard/index.ts";
+import { AddressBook } from "../models/addressBook.ts";
+import { Contact } from "../models/contacts.ts";
 
 export interface GroupModel {
   id: string;
@@ -292,7 +294,7 @@ export class Group {
     });
   }
 
-  toDatabaseObject(): Omit<Tables<"carddav_groups">, "created_at" | "user_id"> {
+  toDatabaseObject() {
     return {
       id: this.#id,
       name: this.#name ?? null,

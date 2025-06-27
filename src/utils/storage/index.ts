@@ -1,10 +1,9 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 
 async function generateHash(buffer: Buffer): Promise<string> {
   return createHash("sha256").update(buffer).digest("base64");
 }
-
 
 export async function uploadImageToSupabase(
   path: string,

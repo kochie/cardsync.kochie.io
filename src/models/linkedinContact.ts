@@ -1,6 +1,5 @@
-import { Element } from "@/actions/linkedinSync";
-import { Tables } from "@/types/database.types";
-import { LinkedInProfile } from "@/types/linkedin.types";
+import { Tables } from "../types/database.types.ts";
+import { Element, LinkedInProfile } from "../types/linkedin.types.ts";
 
 export interface LinkedinContactModel {
   connectionId: string; // Optional, used for tracking connections

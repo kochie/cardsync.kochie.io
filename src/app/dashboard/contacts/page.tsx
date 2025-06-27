@@ -33,7 +33,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/app/context/userContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import camelcaseKeys from "camelcase-keys";
-import { VCardProperty } from "@/utils/vcard/vcard";
+import { VCardProperty } from "@/utils/vcard";
 
 function getEmailTypeColor(type: string): BadgeProps["color"] {
   switch (type.toLowerCase()) {

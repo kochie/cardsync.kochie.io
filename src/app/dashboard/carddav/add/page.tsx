@@ -21,7 +21,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { createCardDavAction } from "@/actions/createCardDav";
+import { createCardDavAction } from "@/actions/carddav/createCardDav";
 
 const presets = [
   { name: "iCloud", server: "contacts.icloud.com", path: "/", ssl: true },

@@ -3,8 +3,8 @@
 import { useActionState, useCallback, useEffect, useState } from "react";
 import { RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { deleteCardDavAction } from "@/actions/deleteCardDav";
-import { cardDavSyncPull, cardDavSyncPush } from "@/actions/cardDavSync";
+import { deleteCardDavAction } from "@/actions/carddav/delete";
+import { cardDavSyncPull, cardDavSyncPush } from "@/actions/carddav/sync";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faDownload,

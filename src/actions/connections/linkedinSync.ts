@@ -3,71 +3,14 @@
 import { Contact } from "@/models/contacts";
 import { LinkedinContact } from "@/models/linkedinContact";
 import {
+  Element,
   LinkedInGraphQLResponse,
   LinkedInProfile,
+  Root,
 } from "@/types/linkedin.types";
 import { createClient } from "@/utils/supabase/server";
 import camelcaseKeys from "camelcase-keys";
 
-export interface LinkedinSyncActionState {
-  error?: string;
-  success?: string;
-}
-
-export interface Root {
-  elements: Element[];
-  paging: Paging;
-}
-
-export interface Element {
-  createdAt: number;
-  $recipeType: string;
-  connectedMember: string;
-  entityUrn: string;
-  connectedMemberResolutionResult?: ConnectedMemberResolutionResult;
-}
-
-export interface ConnectedMemberResolutionResult {
-  memorialized: boolean;
-  lastName: string;
-  profilePicture: ProfilePicture;
-  firstName: string;
-  entityUrn: string;
-  $recipeType: string;
-  headline: string;
-  publicIdentifier: string;
-}
-
-export interface ProfilePicture {
-  $recipeType: string;
-  a11yText: string;
-  displayImageUrn: string;
-  displayImageReference: DisplayImageReference;
-}
-
-export interface DisplayImageReference {
-  vectorImage: VectorImage;
-}
-
-export interface VectorImage {
-  $recipeType: string;
-  rootUrl: string;
-  artifacts: Artifact[];
-}
-
-export interface Artifact {
-  width: number;
-  $recipeType: string;
-  fileIdentifyingUrlPathSegment: string;
-  expiresAt: number;
-  height: number;
-}
-
-export interface Paging {
-  count: number;
-  start: number;
-  links: string[]; // Define specific type if structure is known
-}
 
 async function uploadConnections(
   elements: Element[],

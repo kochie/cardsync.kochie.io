@@ -1,4 +1,4 @@
-import { VCardProperty } from "../vcard/vcard";
+import { VCardProperty } from "../vcard/index.ts";
 
 export type Photo =
   | { data: string; type: string; blurDataUrl?: string; url?: string }

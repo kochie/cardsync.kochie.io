@@ -6,7 +6,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { Loader2, RefreshCw } from "lucide-react";
-import { linkedinSyncAction } from "@/actions/linkedinSync";
+import { linkedinSyncAction } from "@/actions/connections/linkedinSync";
 import { useState } from "react";
 import {
   Card,

@@ -20,7 +20,6 @@ const schema = z.object({
 
 
 export async function createCardDavAction(prevState: object, formData: FormData) {
-
   const validatedFields = schema.safeParse({
     server: formData.get("server"),
     name: formData.get("name"),

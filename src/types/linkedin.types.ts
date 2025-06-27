@@ -98,3 +98,63 @@ export interface Website {
   url: string;
   label: string | null;
 }
+
+export interface LinkedinSyncActionState {
+  error?: string;
+  success?: string;
+}
+
+export interface Root {
+  elements: Element[];
+  paging: Paging;
+}
+
+export interface Element {
+  createdAt: number;
+  $recipeType: string;
+  connectedMember: string;
+  entityUrn: string;
+  connectedMemberResolutionResult?: ConnectedMemberResolutionResult;
+}
+
+export interface ConnectedMemberResolutionResult {
+  memorialized: boolean;
+  lastName: string;
+  profilePicture: ProfilePicture;
+  firstName: string;
+  entityUrn: string;
+  $recipeType: string;
+  headline: string;
+  publicIdentifier: string;
+}
+
+export interface ProfilePicture {
+  $recipeType: string;
+  a11yText: string;
+  displayImageUrn: string;
+  displayImageReference: DisplayImageReference;
+}
+
+export interface DisplayImageReference {
+  vectorImage: VectorImage;
+}
+
+export interface VectorImage {
+  $recipeType: string;
+  rootUrl: string;
+  artifacts: Artifact[];
+}
+
+export interface Artifact {
+  width: number;
+  $recipeType: string;
+  fileIdentifyingUrlPathSegment: string;
+  expiresAt: number;
+  height: number;
+}
+
+export interface Paging {
+  count: number;
+  start: number;
+  links: string[]; // Define specific type if structure is known
+}

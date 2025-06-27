@@ -1,7 +1,6 @@
 {
   "imports": {
     "#src/": "../../../src/",
-    "@/": "../../../src/",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.50.2",
     "camelcase-keys": "npm:camelcase-keys@^9.1.3",
     "tsdav": "npm:tsdav@^2.1.5"

@@ -1,15 +1,15 @@
-import { DAVVCard } from "tsdav";
+import type { DAVVCard } from "tsdav";
 import {
   parseVCardTimestamp,
   toVCardTimestamp,
   VCard,
   VCardProperty,
-} from "@/utils/vcard/vcard";
-import { Tables } from "@/types/database.types";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { AddressBook } from "./addressBook";
-import { uploadImageToSupabase } from "@/utils/storage";
-import { getImageData, Photo } from "@/utils/image";
+} from "../utils/vcard/index.ts";
+import type { Tables } from "../types/database.types.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { AddressBook } from "../models/addressBook.ts";
+import { uploadImageToSupabase } from "../utils/storage/index.ts";
+import { getImageData, Photo } from "../utils/image/index.ts";
 
 // Check if the photo is a base64 encoded string
 
