@@ -24,9 +24,50 @@ export class VCardProperty {
   ) {
     this.key = key.toUpperCase();
     this.params = Object.fromEntries(
-      Object.entries(params).map(([k, v]) => [k.toUpperCase(), v])
+      Object.entries(params).map(([k, v]) => [k.toUpperCase(), Array.from(new Set(v))])
     );
     this.value = value;
+  }
+
+  getParam(key: string): string | string[] | undefined {
+    key = key.toUpperCase();
+    return this.params[key];
+  }
+
+  appendParam(
+    key: string,
+    value: string | string[]
+  ): void {
+    key = key.toUpperCase();
+    const values = Array.isArray(value) ? value : [value];
+    if (this.params[key]) {
+      this.params[key] = Array.from(new Set([
+        ...this.params[key],
+        ...values.map((v) => v.toLowerCase()),
+      ]));
+    } else {
+      this.params[key] = values.map((v) => v.toLowerCase());
+    }
+  }
+
+  removeParam(key: string, value: string|string[]): void {
+    key = key.toUpperCase();
+    if (this.params[key]) {
+      const values = Array.isArray(value) ? value : [value];
+      this.params[key] = this.params[key].filter(
+        (v) => !values.includes(v.toLowerCase())
+      );
+      if (this.params[key].length === 0) {
+        delete this.params[key];
+      }
+    }
+  }
+
+  deleteParam(key: string): void {
+    key = key.toUpperCase();
+    if (this.params[key]) {
+      delete this.params[key];
+    }
   }
 
   static parse(rawTextString: string) {

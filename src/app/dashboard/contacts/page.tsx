@@ -19,7 +19,7 @@ import {
   faSearch,
   faEnvelope,
 } from "@fortawesome/free-solid-svg-icons";
-import { ContactWithSources } from "@/models/contacts";
+import { Contact } from "@/models/contacts";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import {
   Pagination,
@@ -32,8 +32,6 @@ import ContactFlyover from "@/components/ContactFlyover";
 import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/app/context/userContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import camelcaseKeys from "camelcase-keys";
-import { VCardProperty } from "@/utils/vcard";
 
 function getEmailTypeColor(type: string): BadgeProps["color"] {
   switch (type.toLowerCase()) {
@@ -63,7 +61,7 @@ export default function ContactsPage() {
   const searchParams = useSearchParams();
   const { user } = useUser();
 
-  const [contactsData, setContactsData] = useState<ContactWithSources[]>([]);
+  const [contactsData, setContactsData] = useState<Contact[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -73,13 +71,18 @@ export default function ContactsPage() {
   const [isLastPage, setIsLastPage] = useState(false);
 
   const [availableConnections, setAvailableConnections] = useState<
-    { id: string; conenctionName: string, displayName:string, connectionId:string }[]
+    {
+      id: string;
+      conenctionName: string;
+      displayName: string;
+      connectionId: string;
+    }[]
   >([]); // Available connections for the select dropdown
 
   // Items per page state
   // const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const [contact, setSelectedContact] = useState<ContactWithSources | null>(null);
+  const [contact, setSelectedContact] = useState<Contact | null>(null);
 
   const router = useRouter();
 
@@ -120,18 +123,18 @@ export default function ContactsPage() {
 
       let query = supabase
         .from("carddav_contacts")
-        .select(`
+        .select(
+          `
           *, 
-          linkedin_contacts(public_identifier),           
+          linkedin_contacts(public_identifier, entity_urn),           
           carddav_addressbooks (
-            id,
-            connection_id,
-            display_name,
+            *,
             carddav_connections (
               id,
               name
             )
-          )`)
+          )`
+        )
         .order(orderField, { ascending: sortDirection === "asc" })
         .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -149,58 +152,57 @@ export default function ContactsPage() {
       // Immediately populate contacts with placeholder photoUrls
       console.log("Fetched contacts:", data);
 
-      
-      setContactsData(camelcaseKeys(data.slice(0, itemsPerPage).map((contact) =>
-          ({
-            ...contact,
-            name: contact.name ?? "",
-            company: contact.company ?? undefined,
-            linkedin_contact: contact.linkedin_contact ?? undefined,
-            role: contact.role ?? undefined,
-            title: contact.title ?? undefined,
-            address_book: contact.address_book,
-            last_updated: contact.last_updated
-              ? new Date(contact.last_updated)
-              : undefined,
-            photo_blur_url: contact.photo_blur_url ?? undefined,
-            linkedin_public_identifier:
-              contact.linkedin_contacts?.public_identifier ?? undefined,
-            photos: [],
-            addresses: contact.addresses.map((address) => VCardProperty.parse(address)),
-            emails: contact.emails.map((email) => VCardProperty.parse(email)),
-            phones: contact.phones.map((phone) => VCardProperty.parse(phone)),
-            connectionId: contact.carddav_addressbooks.carddav_connections.id,
-            connectionName: contact.carddav_addressbooks.carddav_connections.name,
-            addressBookId: contact.carddav_addressbooks.id,
-            addressBookDisplayName: contact.carddav_addressbooks.display_name,
-            addressBookConnectionId: contact.carddav_addressbooks.connection_id,
+      const newContacts = await Promise.all(
+        data
+          .slice(0, itemsPerPage)
+          .map(async (contact) => await Contact.fromDatabaseObject(contact))
+          // .map(async (contact) => {
+          //   await contact.then((c) => c.loadPhoto(supabase));
+          //   return contact;
+          // })
+      );
 
-          })) , {deep: true}));
+      setContactsData(newContacts);
 
       setIsLastPage(data.length <= itemsPerPage);
     },
-    [itemsPerPage, sortField, sortDirection, user, currentPage, supabase, addressBook]
+    [
+      itemsPerPage,
+      sortField,
+      sortDirection,
+      user,
+      currentPage,
+      supabase,
+      addressBook,
+    ]
   );
 
   useEffect(() => {
-    supabase.from("carddav_addressbooks").select(`id, display_name, carddav_connections(id,name)`).then(({ data, error }) => {
-      if (error) {
-        console.error("Error fetching CardDAV connections:", error);
-        return;
-      }
+    console.log(contactsData);
+  }, [contactsData]);
 
-      console.log("Fetched CardDAV connections:", data);
-      // Set the first connection ID if available
-      setAvailableConnections(
-        data.map((conn) => ({
-          id: conn.id,
-          displayName: conn.display_name ?? "Unknown Address Book",
-          conenctionName: conn.carddav_connections.name,
-          connectionId: conn.carddav_connections.id
-        }))
-      );
-    })
-  }, [supabase])
+  useEffect(() => {
+    supabase
+      .from("carddav_addressbooks")
+      .select(`id, display_name, carddav_connections(id,name)`)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching CardDAV connections:", error);
+          return;
+        }
+
+        console.log("Fetched CardDAV connections:", data);
+        // Set the first connection ID if available
+        setAvailableConnections(
+          data.map((conn) => ({
+            id: conn.id,
+            displayName: conn.display_name ?? "Unknown Address Book",
+            conenctionName: conn.carddav_connections.name,
+            connectionId: conn.carddav_connections.id,
+          }))
+        );
+      });
+  }, [supabase]);
 
   // Firestore pagination: fetch contacts for the current page
   useEffect(() => {
@@ -262,14 +264,17 @@ export default function ContactsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Connections:</span>
+              <span className="text-sm text-muted-foreground">
+                Connections:
+              </span>
               <Select
-              onChange={(e) => {
-                const selectedConnectionId = e.target.value;
-                console.log("Selected connection ID:", selectedConnectionId);
-                router.push(`?page=1&addressBook=${selectedConnectionId}`);
-              }}
-              value={addressBook ?? ""}>
+                onChange={(e) => {
+                  const selectedConnectionId = e.target.value;
+                  console.log("Selected connection ID:", selectedConnectionId);
+                  router.push(`?page=1&addressBook=${selectedConnectionId}`);
+                }}
+                value={addressBook ?? ""}
+              >
                 {availableConnections.map((conn) => (
                   <option key={conn.id} value={conn.id}>
                     {conn.displayName} - {conn.conenctionName}
@@ -389,7 +394,7 @@ export default function ContactsPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2 ml-4">
                         <SupabaseAvatar
-                          path={`users/${user?.id}/contacts/${contact.id}`}
+                          path={`users/${user?.id}/contacts/${contact.id}`.toLowerCase()}
                           name={contact.name ?? ""}
                           blurDataURL={contact.photoBlurUrl}
                         />

@@ -33,17 +33,11 @@ export interface ContactModel {
   title?: string; // Job title
   role?: string; // Job title
   linkedinContact?: string; // Optional, used for tracking connections
+  linkedinUrn?: string; // Optional, used for tracking connections
   photoBlurUrl?: string; // Optional, used for tracking connections
   addressBook: AddressBook; // Optional, used for tracking connections
   birthday?: Date;
 }
-
-export interface ContactWithSources extends ContactModel {
-  linkedinPublicIdentifier?: string; // LinkedIn public identifier for the contact
-  connectionId: string; // Connection ID for the contact
-  connectionName?: string; // Connection name for the contact
-}
-
 export class Contact {
   readonly id: string; // UID;REV:12345;67890
   #name: string; // FN: Simon Perreault
@@ -56,8 +50,10 @@ export class Contact {
   #title?: string; // Job title
   #role?: string; // Job title
   #linkedinContact?: string;
+  #linkedinUrn?: string; // Optional, used for tracking connections
   #birthday?: Date;
   #addressBook: AddressBook;
+  #photoBlurUrl?: string; // Optional, used for tracking connections
 
   constructor({
     id,
@@ -72,7 +68,9 @@ export class Contact {
     title,
     addressBook,
     linkedinContact,
+    linkedinUrn,
     birthday,
+    photoBlurUrl
   }: ContactModel) {
     this.id = id;
     this.#name = name;
@@ -85,13 +83,86 @@ export class Contact {
     this.#title = title;
     this.#role = role;
     this.#linkedinContact = linkedinContact; // Optional, used for tracking connections
+    this.#linkedinUrn = linkedinUrn;
     this.#addressBook = addressBook;
     this.#birthday = birthday;
+    this.#photoBlurUrl = photoBlurUrl;
   }
 
   get name(): string {
     return this.#name;
   }
+
+  get linkedinContact(): string | undefined {
+    return this.#linkedinContact;
+  }
+
+  get addressBook(): AddressBook {
+    return this.#addressBook;
+  }
+
+  get photoBlurUrl(): string | undefined {
+    return this.#photoBlurUrl;
+  }
+
+  get title(): string | undefined {
+    return this.#title;
+  }
+
+  get company(): string | undefined {
+    return this.#company;
+  }
+
+  get role(): string | undefined {
+    return this.#role;
+  } 
+
+  get birthday(): Date | undefined {
+    return this.#birthday;
+  } 
+
+  get addresses(): VCardProperty[] {
+    return this.#addresses;
+  }
+
+  get emails(): VCardProperty[] {
+    return this.#emails;
+  }
+
+  get phones(): VCardProperty[] {
+    return this.#phones;
+  }
+
+  get lastUpdated(): Date | undefined {
+    return this.#lastUpdated;
+  }
+
+  toModel(): ContactModel {
+    return {
+      id: this.id,
+      name: this.#name,
+      addresses: this.#addresses,
+      emails: this.#emails,
+      phones: this.#phones,
+      photos: this.#photos,
+      lastUpdated: this.#lastUpdated,
+      company: this.#company,
+      title: this.#title,
+      role: this.#role,
+      addressBook: this.#addressBook,
+      linkedinContact: this.#linkedinContact,
+      linkedinUrn: this.#linkedinUrn,
+      photoBlurUrl: this.photoBlurUrl,
+      birthday: this.#birthday,
+    };
+  }
+
+  addPhoto(photo: Photo): void {
+    if (!this.#photos) {
+      this.#photos = [];
+    }
+    this.#photos.push(photo);
+  } 
 
   async savePhoto(supabase: SupabaseClient): Promise<boolean> {
     const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -104,26 +175,23 @@ export class Contact {
     const imagePath = `users/${userId}/contacts/${this.id}`.toLowerCase();
 
     if (!this.#photos || this.#photos.length === 0) {
-      return false
+      return false;
     }
 
     if (!this.#photos[0].data) {
-      return false
+      return false;
     }
 
-    await uploadImageToSupabase(
-      imagePath,
-      Buffer.from(this.#photos[0].data, "base64"),
-      supabase
-    );
+    await uploadImageToSupabase(imagePath, this.#photos[0].data, supabase);
 
-    return true
+    return true;
   }
 
   getPhotoUrl(supabase: SupabaseClient, userId: string): string {
     const imagePath = `users/${userId}/contacts/${this.id}`.toLowerCase();
 
-    return supabase.storage.from("assets").getPublicUrl(imagePath).data.publicUrl;
+    return supabase.storage.from("assets").getPublicUrl(imagePath).data
+      .publicUrl;
   }
 
   async loadPhoto(supabase: SupabaseClient): Promise<void> {
@@ -350,9 +418,9 @@ export class Contact {
       if (card.has("BDAY")) {
         const bday = card.get("BDAY").value;
         if (/^(\d){8}$/.test(bday)) {
-          const year = bday.slice(0, 4) 
-          const month = bday.slice(4, 6)
-          const day = bday.slice(6, 8)
+          const year = bday.slice(0, 4);
+          const month = bday.slice(4, 6);
+          const day = bday.slice(6, 8);
           return new Date(`${year}-${month}-${day}`);
         }
         if (/^(\d){4}-(\d){2}-(\d){2}$/.test(bday)) {
@@ -385,18 +453,18 @@ export class Contact {
     });
   }
 
-  static async fromDatabaseObject(
+  static fromDatabaseObject(
     data: Tables<"carddav_contacts"> & {
-      linkedin_contacts: { public_identifier: string | null } | null;
+      linkedin_contacts: { public_identifier: string | null, entity_urn: string | null } | null;
       carddav_addressbooks: Tables<"carddav_addressbooks">;
     }
-  ): Promise<Contact> {
+  ): Contact {
     return new Contact({
       name: data.name ?? "",
       addresses: data.addresses.map((adr) => VCardProperty.parse(adr)),
       emails: data.emails.map((email) => VCardProperty.parse(email)),
       phones: data.phones.map((phone) => VCardProperty.parse(phone)),
-      photos: undefined,
+      photos: [],
       company: data.company ?? undefined,
       title: data.title ?? undefined,
       role: data.role ?? undefined,
@@ -404,6 +472,7 @@ export class Contact {
       // photo: contact. ?? undefined,
       // photoUrl: contact. ?? undefined,
       linkedinContact: data.linkedin_contacts?.public_identifier ?? undefined,
+      linkedinUrn: data.linkedin_contacts?.entity_urn ?? undefined,
       photoBlurUrl: data.photo_blur_url ?? undefined,
       lastUpdated: new Date(data.last_updated),
       addressBook: AddressBook.fromDatabaseObject(data.carddav_addressbooks),
@@ -415,7 +484,7 @@ export class Contact {
     Tables<"carddav_contacts">,
     "user_id" | "created_at"
   > {
-    let photo_blur_url: string | null = null;
+    let photo_blur_url = this.#photoBlurUrl ?? null;
 
     if (
       this.#photos &&
@@ -434,7 +503,7 @@ export class Contact {
       company: this.#company ?? null,
       title: this.#title ?? null,
       role: this.#role ?? null,
-      linkedin_contact: null,
+      linkedin_contact: this.#linkedinUrn ?? null,
       last_updated:
         this.#lastUpdated?.toISOString() ?? new Date().toISOString(),
       photo_blur_url,
@@ -454,14 +523,25 @@ export class Contact {
       return;
     }
 
-    if (!this.#phones.some((p) => p.value === normalizedPhoneNumber))
+    const idx = this.#phones.findIndex(
+      (p) => p.value === normalizedPhoneNumber
+    );
+
+    if (idx < 0) {
+      const newTypes = new Set(types.map((type) => type.toLowerCase()));
       this.#phones.push(
         new VCardProperty(
           "TEL",
-          { TYPE: types.map((type) => type.toLowerCase()) },
+          { TYPE: Array.from(newTypes) },
           normalizedPhoneNumber
         )
       );
+    } else {
+      this.#phones[idx].appendParam(
+        "TYPE",
+        types.map((type) => type.toLowerCase())
+      );
+    }
 
     console.log(
       `Added phone number: ${normalizedPhoneNumber} with type ${types} to contact ${
@@ -476,10 +556,13 @@ export class Contact {
       return;
     }
 
-    if (
-      !this.#emails.some((e) => e.value === emailAddress) &&
-      emailAddress !== "null"
-    ) {
+    emailAddress = emailAddress.toLowerCase().trim();
+
+    const idx = this.#emails.findIndex(
+      (e) => e.value.toLowerCase() === emailAddress
+    );
+
+    if (idx < 0) {
       this.#emails.push(
         new VCardProperty(
           "EMAIL",
@@ -487,12 +570,18 @@ export class Contact {
           emailAddress
         )
       );
-      console.log(
-        `Added email address: ${emailAddress} with type ${types} to contact ${
-          this.#name
-        }`
+    } else {
+      this.#emails[idx].appendParam(
+        "TYPE",
+        types.map((type) => type.toLowerCase())
       );
     }
+
+    console.log(
+      `Added email address: ${emailAddress} with type ${types} to contact ${
+        this.#name
+      }`
+    );
   }
 }
 

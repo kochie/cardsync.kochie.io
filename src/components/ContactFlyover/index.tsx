@@ -1,6 +1,6 @@
 "use client";
 
-import { ContactWithSources } from "@/models/contacts";
+import { Contact, ContactModel } from "@/models/contacts";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import SupabaseAvatar from "../SupabaseAvatar";
 import { useEffect, useState } from "react";
@@ -27,11 +27,10 @@ import { createClient } from "@/utils/supabase/client";
 
 import { useUser } from "@/app/context/userContext";
 import { cardDavSyncPush } from "@/actions/carddav/sync";
-import { mergeLinkedinContactsAction } from "@/actions/connections/linkedinSync";
-import { Database } from "@/types/database.types";
+import { copyLinkedinDetails } from "@/utils/linkedin/duplicates";
 
 type ContactFlyoverProps = {
-  contact: ContactWithSources | null;
+  contact: Contact | null;
   open: boolean;
   onClose: () => void;
 };
@@ -43,8 +42,9 @@ export default function ContactFlyover({
 }: ContactFlyoverProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editableContact, setEditableContact] =
-    useState<ContactWithSources | null>(null);
+  const [editableContact, setEditableContact] = useState<ContactModel | null>(
+    null
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [linkedinContacts, setLinkedinContacts] = useState<LinkedinContact[]>(
@@ -62,7 +62,7 @@ export default function ContactFlyover({
     supabase
       .from("linkedin_contacts")
       .select()
-      .eq("entity_urn", contact.linkedinContact)
+      .eq("public_identifier", contact.linkedinContact)
       .single()
       .then(({ data, error }) => {
         if (error) {
@@ -71,7 +71,7 @@ export default function ContactFlyover({
         }
 
         if (data) {
-          setSelectedLinkedIn(contactFromDatabase(data));
+          setSelectedLinkedIn(LinkedinContact.fromDatabaseObject(data));
         } else {
           setSelectedLinkedIn(null);
         }
@@ -99,7 +99,9 @@ export default function ContactFlyover({
       }
 
       console.log("Found LinkedIn contacts:", data);
-      setLinkedinContacts(data.map(contactFromDatabase));
+      setLinkedinContacts(
+        data.map((item) => LinkedinContact.fromDatabaseObject(item))
+      );
     };
     fetchLinkedinContacts();
   }, [debouncedSearchTerm, supabase]);
@@ -123,11 +125,11 @@ export default function ContactFlyover({
     // };
 
     // fetchSources();
-    setEditableContact(contact);
+    setEditableContact(contact.toModel());
   }, [contact, supabase]);
 
   async function pushToCardDavServer() {
-    if (contact) await cardDavSyncPush(contact.connectionId, [contact.id]);
+    if (contact) await cardDavSyncPush(contact.addressBook.id, [contact.id]);
   }
 
   async function saveContact() {
@@ -136,15 +138,7 @@ export default function ContactFlyover({
     setIsSaving(true);
     const { error } = await supabase
       .from("carddav_contacts")
-      .update({
-        name: editableContact.name,
-        title: editableContact.title,
-        company: editableContact.company,
-        emails: editableContact.emails.map((email) => email.stringify()),
-        phones: editableContact.phones.map((phone) => phone.stringify()),
-        last_updated: new Date().toISOString(),
-        linkedin_contact: selectedLinkedIn?.entityUrn,
-      })
+      .update(new Contact(editableContact).toDatabaseObject())
       .eq("id", editableContact.id);
 
     if (error) {
@@ -175,9 +169,9 @@ export default function ContactFlyover({
               <FontAwesomeIcon icon={faUpload} className="" />
             </button>
             <button
-              onClick={() =>
-                mergeLinkedinContactsAction(contact.id, contact.addressBook)
-              }
+              onClick={() => {
+                copyLinkedinDetails(contact.id, contact.addressBook.id);
+              }}
             >
               <FontAwesomeIcon icon={faLink} className="" />
             </button>
@@ -328,7 +322,7 @@ export default function ContactFlyover({
               <ul className="space-y-2">
                 {(isEditing ? editableContact?.emails : contact.emails)?.map(
                   (e, i) => {
-                    const types = e.params["TYPE"] ?? [];
+                    const types = Array.from(new Set(e.params["TYPE"])) ?? [];
                     return (
                       <li key={i}>
                         <div className="text-sm font-medium text-gray-800">
@@ -378,18 +372,18 @@ export default function ContactFlyover({
               </ul>
             </div>
             <p className="text-sm text-gray-500 mt-4">
-              <strong>Source:</strong> {contact.connectionName || "Unknown"}
+              <strong>Source:</strong> {contact.addressBook.name || "Unknown"}
             </p>
             <p>
               <strong>LinkedIn:</strong>{" "}
-              {contact.linkedinPublicIdentifier ? (
+              {contact.linkedinContact ? (
                 <a
-                  href={`https://www.linkedin.com/in/${contact.linkedinPublicIdentifier}`}
+                  href={`https://www.linkedin.com/in/${contact.linkedinContact}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:underline"
                 >
-                  {contact.linkedinPublicIdentifier}
+                  {contact.linkedinContact}
                 </a>
               ) : (
                 "—"
@@ -428,7 +422,7 @@ export default function ContactFlyover({
                         className="block w-full rounded-md bg-white py-1.5 pl-3 pr-12 text-base text-gray-900 outline -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm"
                         onChange={(event) => setSearchTerm(event.target.value)}
                         displayValue={(person: LinkedinContact) =>
-                          person?.fullName ?? ""
+                          `${person?.firstName} ${person?.lastName}`
                         }
                       />
                       <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
@@ -458,7 +452,7 @@ export default function ContactFlyover({
                                   />
                                 )}
                                 <span className="ml-3 truncate group-data-[selected]:font-semibold">
-                                  {person.fullName}
+                                  {person.firstName} {person.lastName}
                                 </span>
                               </div>
 
@@ -496,47 +490,4 @@ export default function ContactFlyover({
       </div>
     </Dialog>
   );
-}
-
-function contactFromDatabase(
-  data: Database["public"]["Tables"]["linkedin_contacts"]["Row"]
-): LinkedinContact {
-  const linkedinContact = {
-    connectionId: data.connection_id ?? "",
-    entityUrn: data.entity_urn,
-    firstName: data.first_name ?? undefined,
-    lastName: data.last_name ?? undefined,
-    fullName: data.full_name ?? undefined,
-    publicIdentifier: data.public_identifier ?? "",
-    headline: data.headline ?? undefined,
-    profilePicture: data.profile_picture ?? undefined,
-    birthDate: data.birth_date ?? undefined,
-    phoneNumbers:
-      data.phone_numbers?.map((phone) => {
-        const [type, value] = phone.split(":", 2);
-        return {
-          type: type,
-          number: value,
-        };
-      }) ?? [],
-    emailAddresses:
-      data.emails?.map((email) => {
-        const [type, value] = email.split(":", 2);
-        return {
-          emailAddress: value,
-          type: type,
-        };
-      }) ?? [],
-    addresses: data.addresses ?? [],
-    websites:
-      data.websites?.map((website) => {
-        const [type, value] = website.split(":", 2);
-        return {
-          url: value,
-          type: type,
-        };
-      }) ?? [],
-  } as LinkedinContact;
-
-  return linkedinContact;
 }

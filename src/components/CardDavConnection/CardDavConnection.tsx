@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useState } from "react";
 import { RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { deleteCardDavAction } from "@/actions/carddav/delete";
-import { cardDavSyncPull, cardDavSyncPush } from "@/actions/carddav/sync";
+import { cardDavSyncPush } from "@/actions/carddav/sync";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faDownload,
@@ -160,7 +160,18 @@ function SyncButtons({ id }: { id: string }) {
   async function onPull() {
     setPending(true);
     try {
-      await cardDavSyncPull(id);
+      console.log("Sending sync request for account:", id);
+      const res = await fetch("/api/carddav-sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cardId: id }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to sync account:", await res.text());
+      }
     } finally {
       setPending(false);
     }

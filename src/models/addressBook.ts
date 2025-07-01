@@ -29,7 +29,8 @@ export class AddressBook {
         this.#connectionId = data.connectionId;
     }
 
-    static fromDatabaseObject(data: Tables<"carddav_addressbooks">): AddressBook {
+
+    static fromDatabaseObject(data: Omit<Tables<"carddav_addressbooks">, "user_id">): AddressBook {
         return new AddressBook({
             id: data.id,
             name: data.display_name ?? undefined,
@@ -84,5 +85,9 @@ export class AddressBook {
 
     get updatedAt(): Date {
         return this.#updatedAt;
+    }
+
+    get connectionId(): string {
+        return this.#connectionId;
     }
 }

@@ -6,7 +6,6 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { Loader2, RefreshCw } from "lucide-react";
-import { linkedinSyncAction } from "@/actions/connections/linkedinSync";
 import { useState } from "react";
 import {
   Card,
@@ -18,7 +17,7 @@ import {
 } from "@/components/ui/card";
 
 import {fab, faLinkedin} from "@fortawesome/free-brands-svg-icons"
-import { LinkedinConnection } from "@/models/linkedinContact";
+import { ConnectionStatus, LinkedinConnection } from "@/models/linkedinContact";
 
 const dtFormat = new Intl.DateTimeFormat("en-AU");
 
@@ -63,10 +62,15 @@ export function ConnectionCard({ connection }: { connection: LinkedinConnection 
           disabled={pending}
           onClick={async () => {
             setPending(true);
-            const result = await linkedinSyncAction(connection.id);
-            if (result.error) {
-              console.error("Error syncing:", result.error);
-            }
+            fetch("/api/connection-sync", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                connectionId: connection.id,
+              }),
+            })
             setPending(false);
           }}
         >
@@ -82,7 +86,7 @@ export function ConnectionCard({ connection }: { connection: LinkedinConnection 
             </>
           )}
         </Button>
-        {connection.status === "Connected" && (
+        {connection.status === ConnectionStatus.Connected && (
           <Link
             href={`/dashboard/connections/${connection.name.toLowerCase()}`}
           >

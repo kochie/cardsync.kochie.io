@@ -2,9 +2,10 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import camelcaseKeys from "camelcase-keys";
 import { createDAVClient } from "tsdav";
 
-import { Contact } from "#src/models/contacts.ts";
-import { Group } from "#src/models/groups.ts";
-import { Database } from "#src/types/database.types.ts";
+import { Contact } from "@/models/contacts.ts";
+import { Group } from "@/models/groups.ts";
+import { Database } from "@/types/database.types.ts";
+import { CardDavStatus } from "@/models/carddav";
 
 
 export async function updateConnection(cardId: string, contactCount: number, supabase: SupabaseClient<Database>) {
@@ -13,6 +14,7 @@ export async function updateConnection(cardId: string, contactCount: number, sup
     .update({
       contact_count: contactCount,
       last_synced: new Date().toISOString(),
+      status: CardDavStatus.Connected
     })
     .eq("id", cardId);
 
@@ -85,8 +87,7 @@ export async function saveContacts(
     // If the contact has a photo, upload it to Cloud Storage
 
     const result = await contact.savePhoto(supabase);
-    const encoded = new TextEncoder().encode(result ? "." : "x");
-    Deno.stdout.write(encoded);
+    process.stdout.write(result ? "." : "x");
   }
 
   console.log("\nUploading photos completed");

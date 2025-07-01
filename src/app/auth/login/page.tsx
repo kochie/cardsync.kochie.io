@@ -10,7 +10,7 @@ import { AuthLayout } from "@/components/ui/auth-layout"
 import { Heading } from "@/components/ui/heading"
 import { Field, Label } from "@/components/ui/fieldset"
 import { Strong, Text, TextLink } from "@/components/ui/text"
-import { loginAction } from "@/actions/login"
+import { loginAction } from "@/actions/auth/login"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")

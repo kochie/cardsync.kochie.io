@@ -1,251 +1,24 @@
 "use server";
 
-import { Contact } from "@/models/contacts";
 import { createClient } from "@/utils/supabase/server";
-import camelcaseKeys from "camelcase-keys";
-import { createDAVClient } from "tsdav";
-import { Group } from "@/models/groups";
-import { AddressBook } from "@/models/addressBook";
-
-async function saveContacts(contacts: Contact[]): Promise<void> {
-  const supabase = await createClient();
-
-  const userResponse = await supabase.auth.getUser();
-
-  if (userResponse.error) {
-    console.error("Error fetching user:", userResponse.error);
-    throw new Error("Failed to fetch user");
-  }
-
-  if (!userResponse.data.user) {
-    console.error("No user found");
-    throw new Error("User not authenticated");
-  }
-
-  for (const contact of contacts) {
-    // If the contact has a photo, upload it to Cloud Storage
-
-    const result = await contact.savePhoto(supabase);
-    process.stdout.write(result ? "." : "x");
-  }
-
-  console.log("\nUploading photos completed");
-
-  const { error } = await supabase
-    .from("carddav_contacts")
-    .upsert(contacts.map((contact) => contact.toDatabaseObject()));
-  if (error) {
-    console.error("Error saving contacts to database:", error);
-    throw new Error("Failed to save contacts");
-  }
-  console.log(`Saved ${contacts.length} contacts to the database`);
-}
-
-async function saveGroups(groups: Group[]): Promise<void> {
-  const supabase = await createClient();
-
-  const { error: upsertGroupError } = await supabase
-    .from("carddav_groups")
-    .upsert(
-      groups
-        .filter((group) => !group.readonly)
-        .map((group) => group.toDatabaseObject()),
-      { onConflict: "id" }
-    );
-
-  if (upsertGroupError) {
-    console.error("Error saving groups to database:", upsertGroupError);
-    throw new Error("Failed to save groups");
-  }
-
-  const { error: upsertMembersError } = await supabase
-    .from("carddav_group_members")
-    .upsert(
-      groups.flatMap((group) =>
-        group.memberIds.map((member) => ({
-          member_id: member,
-          group_id: group.id,
-          address_book: group.addressBookId,
-        }))
-      ),
-      { onConflict: "member_id,group_id,address_book" }
-    );
-
-  if (upsertMembersError) {
-    console.error(
-      "Error saving group members to database:",
-      upsertMembersError
-    );
-    throw new Error("Failed to save group members");
-  }
-}
-
-async function getCardDavSettings(cardId: string) {
-  const supabase = await createClient();
-
-  console.log(`Fetching CardDAV settings for cardId: ${cardId}`);
-  const { data, error } = await supabase
-    .from("carddav_connections")
-    .select("*")
-    .eq("id", cardId)
-    .single();
-
-  if (error) {
-    console.error("Error fetching CardDAV settings:", error);
-    throw new Error("CardDAV connection not found");
-  }
-
-  const settings = camelcaseKeys(data, { deep: true });
-
-  const baseUrl = new URL(
-    `${settings.useSsl ? "https" : "http"}://${settings.server}`
-  );
-  // const serverUrl = new URL(settings.addressBookPath, baseUrl).toString();
-
-  const client = await createDAVClient({
-    credentials: {
-      username: settings.username,
-      password: settings.password,
-    },
-    authMethod: "Basic",
-    serverUrl: baseUrl.toString(),
-    defaultAccountType: "carddav",
-  });
-
-  return { client };
-}
-
-async function updateConnection(cardId: string, contactCount: number) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("carddav_connections")
-    .update({
-      contact_count: contactCount,
-      last_synced: new Date().toISOString(),
-    })
-    .eq("id", cardId);
-
-  if (error) {
-    console.error("Error updating CardDAV connection:", error);
-    throw new Error("Failed to update CardDAV connection");
-  }
-  console.log(
-    `Updated CardDAV connection ${cardId} with ${contactCount} contacts`
-  );
-}
 
 export async function cardDavSyncPull(cardId: string) {
   // Discover address books
   const supabase = await createClient();
 
-  await supabase
-    .from("carddav_connections")
-    .update({
-      status: "syncing",
-    })
-    .eq("id", cardId);
+  const { error } = await supabase.functions.invoke("carddav-account-sync", {
+    body: JSON.stringify({
+      cardId,
+    }),
+  });
 
-  try {
-    const { client } = await getCardDavSettings(cardId);
-
-    console.log(`Syncing CardDAV for cardId: ${cardId}`);
-
-    const addressBooks = await client.fetchAddressBooks();
-
-    console.log(`Number of address books: ${addressBooks.length}`);
-
-    const { data: addressBookData, error } = await supabase
-      .from("carddav_addressbooks")
-      .upsert(
-        addressBooks.map((book) => ({
-          display_name: `${book.displayName}`,
-          url: book.url,
-          connection_id: cardId,
-        })),
-        { onConflict: "url,connection_id" }
-      )
-      .select();
-
-    if (error) {
-      console.error("Error saving address books to database:", error);
-      throw new Error("Failed to save address books");
-    }
-
-    for await (const davAddressBook of addressBooks) {
-      const cards = await client.fetchVCards({ addressBook: davAddressBook });
-
-      const addressBookInfo = addressBookData.find(
-        (book) =>
-          book.url === davAddressBook.url && book.connection_id === cardId
-      );
-      if (!addressBookInfo) {
-        console.warn(
-          `Address book not found in database: ${davAddressBook.displayName}`
-        );
-        continue;
-      }
-      console.log(
-        `Found ${cards.length} cards in address book: ${davAddressBook.displayName}`
-      );
-
-      const addressBook = AddressBook.fromDatabaseObject(addressBookInfo);
-      const contacts = await Contact.fromDavObjects(cards, addressBook);
-      const groups = Group.fromDavObjects(cards, addressBook);
-
-      console.log(
-        `Found ${contacts.length} contacts in address book: ${addressBook.name}`
-      );
-
-      // print contacts with duplicate ids
-      const duplicateIds = contacts
-        .map((c) => c.id.toLowerCase())
-        .filter((id, index, self) => self.indexOf(id) !== index);
-      if (duplicateIds.length > 0) {
-        console.warn(
-          `Found duplicate contact IDs in address book ${
-            addressBook.name
-          }: ${duplicateIds.join(", ")}`
-        );
-      }
-
-      // Print first 10 contacts for debugging
-      // Save in groups of 50
-      for (let i = 0; i < contacts.length; i += 50) {
-        const contactGroup = contacts.slice(i, i + 50);
-        console.log(
-          `Saving contacts ${i + 1} to ${Math.min(
-            i + 50,
-            contacts.length
-          )} in address book: ${addressBook.name}`
-        );
-        await saveContacts(contactGroup);
-      }
-
-      await saveGroups(groups);
-
-      // await saveContacts(contacts);
-      await updateConnection(cardId, contacts.length);
-    }
-  } catch (error) {
-    await supabase
-      .from("carddav_connections")
-      .update({
-        status: "sync error",
-      })
-      .eq("id", cardId);
-    console.error("Error during CardDAV sync:", error);
+  if (error) {
+    console.error("Error invoking CardDAV sync pull:", error);
     return {
-      error,
+      error: "Failed to pull CardDAV contacts",
+      details: error.message,
     };
   }
-  
-  await supabase
-    .from("carddav_connections")
-    .update({
-      status: "connected",
-    })
-    .eq("id", cardId);
 }
 
 export async function cardDavSyncPush(
@@ -254,67 +27,10 @@ export async function cardDavSyncPush(
 ) {
   const supabase = await createClient();
 
-  try {
-    const { client } = await getCardDavSettings(cardId);
-
-    let query = supabase
-      .from("carddav_contacts")
-      .select(
-        `
-          *,
-          linkedin_contacts(*),
-          carddav_addressbooks (*)
-        `
-      )
-      .eq("carddav_addressbooks.connection_id", cardId);
-
-    if (contactIds.length > 0) {
-      query = query.in("id", contactIds);
-    }
-
-    const { data: contacts, error: contactsError } = await query;
-
-    if (contactsError) {
-      console.error(
-        "Error fetching address books from database:",
-        contactsError
-      );
-      throw new Error("Failed to fetch address books");
-    }
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error("Error fetching user:", userError);
-      throw new Error("Failed to fetch user");
-    }
-
-    for await (const contact of contacts) {
-      console.log(
-        `Updating contact: ${contact.name} (${contact.id}) - ${contact.linkedin_contacts?.public_identifier}`
-      );
-      const vcard = await Contact.fromDatabaseObject(contact).then((contact) =>
-        contact.toVCard()
-      );
-
-      const response = await client.updateVCard({
-        vCard: vcard,
-      });
-
-      if (!response.ok) {
-        console.error(
-          `Failed to update contact ${contact.name} (${contact.id}):`,
-          response.statusText
-        );
-        continue;
-      }
-    }
-  } catch (error) {
-    console.error("Error during CardDAV sync:", error);
-    return {
-      error,
-    };
-  }
+  await supabase.functions.invoke("carddav-account-sync", {
+    body: JSON.stringify({
+      cardId,
+      contactIds,
+    }),
+  });
 }

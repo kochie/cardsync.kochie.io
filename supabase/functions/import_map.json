@@ -1,0 +1,11 @@
+{
+    "imports": {
+        "@/": "../../src/",
+        "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.50.2",
+        "camelcase-keys": "npm:camelcase-keys@^9.1.3",
+        "tsdav": "./_vendor/tsdav/src/index.ts",
+        "debug": "npm:debug@4.4.1",
+        "base-64": "npm:base-64@1.0.0",
+        "xml-js": "npm:xml-js@1.6.11"
+    }
+}

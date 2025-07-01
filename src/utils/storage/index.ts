@@ -1,37 +1,38 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { createHash } from "node:crypto";
-
-async function generateHash(buffer: Buffer): Promise<string> {
-  return createHash("sha256").update(buffer).digest("base64");
-}
 
 export async function uploadImageToSupabase(
   path: string,
-  photoBuffer: Buffer,
+  photobase64: string,
   supabase: SupabaseClient
 ): Promise<void> {
+  // Decode base64 string to Uint8Array
+  const photoBuffer = Uint8Array.from(atob(photobase64), c => c.charCodeAt(0));
+
   const doesExist = await supabase.storage.from("assets").exists(path);
 
   let alreadyUploaded = false;
   if (doesExist.data.valueOf() && !doesExist.error) {
-    // Need to check the db metadata to find the hash of the photo
     const info = await supabase.storage.from("assets").info(path);
     if (info.error) {
       console.error(`Failed to get info for contact ${path}:`, info.error);
       return;
     }
-    alreadyUploaded =
-      info.data.metadata?.["hash"] === (await generateHash(photoBuffer));
+    const hash = await crypto.subtle.digest("SHA-256", photoBuffer);
+    const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+    alreadyUploaded = info.data.metadata?.["hash"] === hashBase64;
   }
 
   if (!alreadyUploaded) {
+    const hash = await crypto.subtle.digest("SHA-256", photoBuffer);
+    const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+
     const { error } = await supabase.storage
       .from("assets")
       .upload(path, photoBuffer, {
         contentType: "image/jpeg",
         upsert: true,
         metadata: {
-          hash: await generateHash(photoBuffer),
+          hash: hashBase64,
         },
       });
     if (error) {

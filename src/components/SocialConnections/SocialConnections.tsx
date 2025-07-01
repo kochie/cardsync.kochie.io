@@ -1,3 +1,5 @@
+"use client";
+
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import {
@@ -9,31 +11,80 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ConnectionTableRow } from "./ConnectionTableRow";
-import { createClient } from "@/utils/supabase/server";
-import camelcaseKeys from "camelcase-keys";
+import { createClient } from "@/utils/supabase/client";
+import { useCallback, useEffect, useState } from "react";
+import { LinkedinConnection } from "@/models/linkedinContact";
+import { Tables } from "@/types/database.types";
 
-export default async function SocialConnections() {
-  const supabase = await createClient();
+export default function SocialConnections() {
+  const supabase = createClient();
 
-  const {data, error} = await supabase.from("linkedin_connections").select("*")
+  const [connections, setConnections] = useState<LinkedinConnection[]>([]);
 
-  if (error) {
-    console.error("Error fetching connections:", error);
-    return <div className="p-4">Error loading connections.</div>;
-  }
+  const fetchConnections = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("linkedin_connections")
+      .select("*");
 
-  const connections = camelcaseKeys(data, { deep: true }).map((conn) => ({
-    ...conn,
-    lastSynced: conn.lastSynced ? new Date(conn.lastSynced) : undefined,
-    status: conn.status ?? "connected",
-    syncFrequency: conn.syncFrequency ?? "manual",
-  }));
+    if (error) {
+      console.error("Error fetching connections:", error);
+      return;
+    }
+
+    const formattedConnections = data.map((connection) =>
+      LinkedinConnection.fromDatabaseObject(connection)
+    );
+
+
+    setConnections(formattedConnections);
+  }, [supabase]);
+
+  const listenForConnectionChanges = useCallback(() => {
+    const channels = supabase
+      .channel("custom-all-channel")
+      .on<Tables<"linkedin_connections">>(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "linkedin_connections" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setConnections((prev) =>
+              prev.filter((account) => account.id !== payload.old.id)
+            );
+          } else if (payload.eventType === "INSERT") {
+            setConnections((prev) => [
+              ...prev,
+              LinkedinConnection.fromDatabaseObject(payload.new),
+            ]);
+          } else if (payload.eventType === "UPDATE") {
+            setConnections((prev) =>
+              prev.map((account) =>
+                account.id === payload.new?.id
+                  ? LinkedinConnection.fromDatabaseObject(payload.new)
+                  : account
+              )
+            );
+          }
+          console.log("Change received!", payload);
+        }
+      )
+      .subscribe();
+
+    return channels
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchConnections();
+    const channels = listenForConnectionChanges();
+
+    return () => {
+      // Cleanup the subscription when the component unmounts
+      channels.unsubscribe();
+    }
+  }, [fetchConnections, listenForConnectionChanges]);
 
   return (
     <div className="space-y-6">
-
-
-      {data.length > 0 ? (
+      {connections.length > 0 ? (
         <div className="rounded-md border">
           <Table>
             <TableHead>
@@ -49,7 +100,10 @@ export default async function SocialConnections() {
             </TableHead>
             <TableBody>
               {connections.map((connection) => (
-                <ConnectionTableRow key={connection.id} connection={connection} />
+                <ConnectionTableRow
+                  key={connection.id}
+                  connection={connection}
+                />
               ))}
             </TableBody>
           </Table>

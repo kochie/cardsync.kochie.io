@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Facebook, Loader2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Field, Label } from "@/components/ui/fieldset";
-import { handleRegister } from "@/actions/signup";
+import { handleRegister } from "@/actions/auth/signup";
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
