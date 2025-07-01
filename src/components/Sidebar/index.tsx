@@ -46,6 +46,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { usePathname } from "next/navigation";
+import SupabaseAvatar from "../SupabaseAvatar";
 
 export default function SidebarProvider({
   children,
@@ -165,47 +166,67 @@ export default function SidebarProvider({
           </SidebarBody>
           <SidebarFooter className="max-lg:hidden">
             <Dropdown>
-              <DropdownButton as={SidebarItem}>
-                <span className="flex min-w-0 items-center gap-3">
-                  <Avatar
-                    src={user?.user_metadata?.photoURL}
-                    className="size-10"
-                    square
-                    alt=""
-                    initials={user?.user_metadata?.displayName}
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">
-                      {user?.user_metadata?.displayName}
-                    </span>
-                    <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
-                      {user?.email}
+              <DropdownButton as={SidebarItem} className="">
+                <div className="flex items-center justify-between w-full cursor-pointer">
+                  <span className="flex min-w-0 items-center gap-3 ">
+                    <SupabaseAvatar
+                      path={`profile-pictures/${user?.id}`}
+                      className="size-10 bg-white"
+                      square
+                      name={user?.user_metadata?.displayName ?? ""}
+                      blurDataURL={user?.user_metadata?.blurDataURL}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">
+                        {user?.user_metadata?.displayName}
+                      </span>
+                      <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
+                        {user?.email}
+                      </span>
                     </span>
                   </span>
-                </span>
-                <FontAwesomeIcon icon={faChevronUp} />
+                  <FontAwesomeIcon
+                    icon={faChevronUp}
+                    className=""
+                  />
+                </div>
               </DropdownButton>
               <DropdownMenu className="min-w-64" anchor="top start">
-                <DropdownItem href="/dashboard/profile">
-                  <FontAwesomeIcon icon={faUser} />
+                <DropdownItem
+                  href="/dashboard/profile"
+                  className="cursor-pointer gap-2 flex"
+                >
+                  <FontAwesomeIcon icon={faUser} fixedWidth />
                   <DropdownLabel>My profile</DropdownLabel>
                 </DropdownItem>
-                <DropdownItem href="/settings">
-                  <FontAwesomeIcon icon={faGear} />
+                <DropdownItem
+                  href="/settings"
+                  className="cursor-pointer gap-2 flex"
+                >
+                  <FontAwesomeIcon icon={faGear} fixedWidth />
                   <DropdownLabel>Settings</DropdownLabel>
                 </DropdownItem>
                 <DropdownDivider />
-                <DropdownItem href="/privacy-policy">
-                  <FontAwesomeIcon icon={faShieldHalved} />
+                <DropdownItem
+                  href="/privacy-policy"
+                  className="cursor-pointer gap-2 flex"
+                >
+                  <FontAwesomeIcon icon={faShieldHalved} fixedWidth />
                   <DropdownLabel>Privacy policy</DropdownLabel>
                 </DropdownItem>
-                <DropdownItem href="/share-feedback">
-                  <FontAwesomeIcon icon={faLightbulb} />
+                <DropdownItem
+                  href="/share-feedback"
+                  className="cursor-pointer gap-2 flex"
+                >
+                  <FontAwesomeIcon icon={faLightbulb} fixedWidth />
                   <DropdownLabel>Share feedback</DropdownLabel>
                 </DropdownItem>
                 <DropdownDivider />
-                <DropdownItem href="/logout" className="flex gap-2">
-                  <FontAwesomeIcon icon={faRightFromBracket} />
+                <DropdownItem
+                  href="/logout"
+                  className="cursor-pointer gap-2 flex"
+                >
+                  <FontAwesomeIcon icon={faRightFromBracket} fixedWidth />
                   <DropdownLabel>Sign out</DropdownLabel>
                 </DropdownItem>
               </DropdownMenu>

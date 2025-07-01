@@ -32,6 +32,7 @@ import ContactFlyover from "@/components/ContactFlyover";
 import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/app/context/userContext";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useDebounce } from "@uidotdev/usehooks";
 
 function getEmailTypeColor(type: string): BadgeProps["color"] {
   switch (type.toLowerCase()) {
@@ -64,6 +65,8 @@ export default function ContactsPage() {
   const [contactsData, setContactsData] = useState<Contact[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchTerm = useDebounce(searchQuery, 300);
+
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -142,6 +145,10 @@ export default function ContactsPage() {
         query = query.eq("address_book", addressBook);
       }
 
+      if (debouncedSearchTerm.length > 0) {
+        query = query.ilike("name", `%${debouncedSearchTerm}%`);
+      }
+
       const { data, error } = await query;
 
       if (error) {
@@ -156,10 +163,10 @@ export default function ContactsPage() {
         data
           .slice(0, itemsPerPage)
           .map(async (contact) => await Contact.fromDatabaseObject(contact))
-          // .map(async (contact) => {
-          //   await contact.then((c) => c.loadPhoto(supabase));
-          //   return contact;
-          // })
+        // .map(async (contact) => {
+        //   await contact.then((c) => c.loadPhoto(supabase));
+        //   return contact;
+        // })
       );
 
       setContactsData(newContacts);
@@ -174,6 +181,7 @@ export default function ContactsPage() {
       currentPage,
       supabase,
       addressBook,
+      debouncedSearchTerm,
     ]
   );
 
