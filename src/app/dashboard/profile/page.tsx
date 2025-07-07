@@ -183,9 +183,11 @@ export default function ProfilePage() {
       return;
     }
 
+    const metadata: Record<string, string> = {
+      displayName: displayName,
+    };
+
     try {
-      let newPhotoURL = photoURL;
-      let blurDataURL = "";
       if (file) {
         setUploading(true);
 
@@ -203,19 +205,15 @@ export default function ProfilePage() {
         const { data } = supabase.storage
           .from("assets")
           .getPublicUrl(`profile-pictures/${user.id}`);
-        newPhotoURL = data.publicUrl;
 
-        blurDataURL = await makePlaceholder(file);
+        metadata.newPhotoURL = data.publicUrl;
+        metadata.blurDataURL = await makePlaceholder(file);
         setUploading(false);
       }
 
       const { error: updateError } = await supabase.auth.updateUser({
         email: email !== user.email ? email : undefined,
-        data: {
-          displayName: displayName,
-          photoURL: newPhotoURL,
-          blurDataURL,
-        },
+        data: metadata
       });
 
       if (updateError) {

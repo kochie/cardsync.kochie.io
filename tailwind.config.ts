@@ -1,9 +1,11 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
+
+import TailwindAnimate from "tailwindcss-animate";
+import TailwindHeadless from "@headlessui/tailwindcss";
 
 const config = {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
-    "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
@@ -74,7 +76,7 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
-} satisfies Config
+  plugins: [TailwindAnimate, TailwindHeadless],
+} satisfies Config;
 
-export default config
+export default config;

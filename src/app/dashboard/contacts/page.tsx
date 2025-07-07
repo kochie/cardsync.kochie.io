@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, InputGroup } from "@/components/ui/input";
 import {
@@ -20,7 +20,7 @@ import {
   faEnvelope,
 } from "@fortawesome/free-solid-svg-icons";
 import { Contact } from "@/models/contacts";
-import { Badge, BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Pagination,
   PaginationNext,
@@ -33,61 +33,71 @@ import { createClient } from "@/utils/supabase/client";
 import { useUser } from "@/app/context/userContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDebounce } from "@uidotdev/usehooks";
+import { getEmailTypeColor } from "@/utils/color/badgeColor";
+import toast from "react-hot-toast";
 
-function getEmailTypeColor(type: string): BadgeProps["color"] {
-  switch (type.toLowerCase()) {
-    case "home":
-      return "blue";
-    case "work":
-      return "green";
-    case "internet":
-      return "purple";
-    case "pref":
-      return "orange";
-    case "cell":
-      return "lime";
-    case "voice":
-      return "yellow";
-    case "x-mobile":
-    case "mobile":
-      return "pink";
-    default:
-      return "zinc"; // fallback for unknown types
-  }
+interface AddressBookConnection {
+  id: string;
+  displayName: string;
+  connectionName: string;
+  connectionId: string;
 }
 
 export default function ContactsPage() {
   const supabase = createClient();
-
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams()
+  const router = useRouter();
   const { user } = useUser();
 
+  // State to hold the contacts data
+  // This will be populated with contact objects fetched from the database
   const [contactsData, setContactsData] = useState<Contact[]>([]);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchTerm = useDebounce(searchQuery, 300);
-
+  // State to track the current source filter
+  // This will be used to filter contacts by their source (e.g., LinkedIn, Facebook, Slack)
+  // Default is "all" which shows all contacts regardless of source
   const [sourceFilter, setSourceFilter] = useState("all");
+
+  // State to track the current sort field
+  // This will be used to determine which field to sort contacts by
   const [sortField, setSortField] = useState("name");
+
+  // State to track the current sort direction
+  // This will be used to toggle between ascending and descending order
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // State to track if we are on the last page of contacts
+  // This is used to disable the next page button when there are no more contacts to fetch
   const [isLastPage, setIsLastPage] = useState(false);
 
+  // State to hold the current page number
+  // This will be used for pagination to determine which page of contacts to display
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // State to hold the number of items per page
+  // This will be used to determine how many contacts to display per page
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  // State to hold the currently selected address book for filtering
+  // This will be used to filter contacts by the selected address book connection
+  const [addressBook, setAddressBook] = useState<string | null>(null);
+
+
+
+  // State to hold available CardDAV connections for filtering
+  // This will be used to populate the dropdown for selecting address books
   const [availableConnections, setAvailableConnections] = useState<
-    {
-      id: string;
-      conenctionName: string;
-      displayName: string;
-      connectionId: string;
-    }[]
-  >([]); // Available connections for the select dropdown
+    AddressBookConnection[]
+  >([]);
 
-  // Items per page state
-  // const [itemsPerPage, setItemsPerPage] = useState(10);
-
+  // State to hold the currently selected contact for the flyover
   const [contact, setSelectedContact] = useState<Contact | null>(null);
 
-  const router = useRouter();
+  const [, startTransition] = useTransition();
+
+  // Used for searching contacts with the db
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchTerm = useDebounce(searchQuery, 300);
 
   function handleSort(field: string) {
     if (sortField === field) {
@@ -100,22 +110,30 @@ export default function ContactsPage() {
     }
   }
 
-  const currentPage = searchParams.has("page")
-    ? parseInt(searchParams.get("page") ?? "1", 10)
-    : 1;
-
-  const itemsPerPage = searchParams.has("itemsPerPage")
-    ? parseInt(searchParams.get("itemsPerPage") ?? "25", 10)
-    : 10;
-
-  const addressBook = searchParams.get("addressBook") || null;
-
   const fetchContacts = useCallback(
-    async function () {
+    async function (
+      currentPage: number,
+      itemsPerPage: number,
+      addressBook: string | null,
+      search: string,
+      sortField: string,
+      sortDirection: string
+    ) {
       if (!user) {
         setContactsData([]);
         return;
       }
+
+      // const currentPage = searchParams.has("page")
+      //   ? parseInt(searchParams.get("page") ?? "1", 10)
+      //   : 1;
+
+      // const itemsPerPage = searchParams.has("itemsPerPage")
+      //   ? parseInt(searchParams.get("itemsPerPage") ?? "25", 10)
+      //   : 10;
+
+      // const addressBook = searchParams.get("addressBook") || null;
+      // const search = searchParams.get("search") || "";
 
       console.log("Fetching contacts for user:", user.id);
 
@@ -145,14 +163,16 @@ export default function ContactsPage() {
         query = query.eq("address_book", addressBook);
       }
 
-      if (debouncedSearchTerm.length > 0) {
-        query = query.ilike("name", `%${debouncedSearchTerm}%`);
+      // when the search term changes the counter should reset to page 1
+      if (search.length > 0) {
+        query = query.ilike("name", `%${search}%`);
       }
 
       const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching contacts:", error);
+        toast.error("Failed to fetch contacts. Please try again later.");
         setContactsData([]);
         return;
       }
@@ -170,19 +190,9 @@ export default function ContactsPage() {
       );
 
       setContactsData(newContacts);
-
       setIsLastPage(data.length <= itemsPerPage);
     },
-    [
-      itemsPerPage,
-      sortField,
-      sortDirection,
-      user,
-      currentPage,
-      supabase,
-      addressBook,
-      debouncedSearchTerm,
-    ]
+    [user, supabase]
   );
 
   useEffect(() => {
@@ -205,33 +215,112 @@ export default function ContactsPage() {
           data.map((conn) => ({
             id: conn.id,
             displayName: conn.display_name ?? "Unknown Address Book",
-            conenctionName: conn.carddav_connections.name,
+            connectionName: conn.carddav_connections.name,
             connectionId: conn.carddav_connections.id,
           }))
         );
       });
   }, [supabase]);
 
-  // Firestore pagination: fetch contacts for the current page
+  useEffect(() => { 
+    const currentPage = searchParams.has("page")
+      ? parseInt(searchParams.get("page") ?? "1", 10)
+      : 1;
+    setCurrentPage(currentPage);
+
+    const itemsPerPage = searchParams.has("itemsPerPage")
+      ? parseInt(searchParams.get("itemsPerPage") ?? "25", 10)
+      : 25;
+    setItemsPerPage(itemsPerPage);
+
+    const addressBook = searchParams.get("addressBook") || null;
+    setAddressBook(addressBook);
+
+    const search = searchParams.get("search") || "";
+    setSearchQuery(search);
+
+    const sortField = searchParams.get("sortField") || "name";
+    setSortField(sortField);
+
+    const sortDirection = (searchParams.get("sortDirection") ?? "asc") as "asc" | "desc";
+    setSortDirection(sortDirection);
+  }, [searchParams])
+
+  // This runs whenever the search params change
   useEffect(() => {
-    fetchContacts();
-  }, [fetchContacts]);
+    fetchContacts(
+      currentPage,
+      itemsPerPage,
+      addressBook,
+      debouncedSearchTerm,
+      sortField,
+      sortDirection
+    );
+  }, [fetchContacts, currentPage, itemsPerPage, addressBook, debouncedSearchTerm, sortField, sortDirection]);
+
+  useEffect(() => {
+    // Set flyover contact
+    if (searchParams.has("contactId")) {
+      const contactId = searchParams.get("contactId");
+      if (contactId) {
+        const contact = contactsData.find((c) => c.id === contactId);
+        if (contact) {
+          setSelectedContact(contact);
+          return;
+        }
+      }
+    }
+
+    setSelectedContact(null);
+  }, [contactsData, searchParams]);
+
+  // This effect handles any updates to the search params in the URL
+  useEffect(() => {
+    // Reset to page 1 when search term changes
+    const params = new URLSearchParams(searchParams);
+
+    // If changing the search term, update the page to 1
+    if (
+      searchParams.has("search") &&
+      debouncedSearchTerm !== searchParams.get("search")
+    ) {
+      params.set("page", "1");
+    }
+
+    if (debouncedSearchTerm.length > 0) {
+      params.set("search", debouncedSearchTerm);
+    } else {
+      params.delete("search");
+    }
+
+    const newUrl = `?${searchParams.toString()}`;
+    if (newUrl !== window.location.search) {
+      // Only update the URL if it has changed
+      router.push(newUrl);
+    }
+  }, [debouncedSearchTerm, router, searchParams]);
 
   const previousPage = useCallback(() => {
     const params = new URLSearchParams(searchParams);
+    const currentPage = searchParams.has("page")
+      ? parseInt(searchParams.get("page") ?? "1", 10)
+      : 1;
     if (currentPage <= 1) return undefined;
 
     params.set("page", (currentPage - 1).toString());
     return `?${params.toString()}`;
-  }, [currentPage, searchParams]);
+  }, [searchParams])
 
   const nextPage = useCallback(() => {
     const params = new URLSearchParams(searchParams);
     if (isLastPage) return undefined;
 
+    const currentPage = searchParams.has("page")
+      ? parseInt(searchParams.get("page") ?? "1", 10)
+      : 1;
     params.set("page", (currentPage + 1).toString());
     return `?${params.toString()}`;
-  }, [searchParams, currentPage, isLastPage]);
+  }, [isLastPage, searchParams])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -285,7 +374,7 @@ export default function ContactsPage() {
               >
                 {availableConnections.map((conn) => (
                   <option key={conn.id} value={conn.id}>
-                    {conn.displayName} - {conn.conenctionName}
+                    {conn.displayName} - {conn.connectionName}
                   </option>
                 ))}
               </Select>
@@ -320,8 +409,14 @@ export default function ContactsPage() {
         <div className="rounded-md border">
           <ContactFlyover
             contact={contact}
-            onClose={() => setSelectedContact(null)}
-            open={!!contact}
+            onClose={() => {
+              const params = new URLSearchParams(window.location.search);
+              params.delete("contactId");
+              // setSelectedContact(null);
+              startTransition(() => {
+                router.push(`?${params.toString()}`, { scroll: false });
+              });
+            }}
           />
           <Table>
             <TableHead>
@@ -495,7 +590,14 @@ export default function ContactsPage() {
                     <TableCell>
                       <Button
                         className="h-8 w-8 p-0 flex items-center justify-center cursor-pointer transform duration-300"
-                        onClick={() => setSelectedContact(contact)}
+                        onClick={() => {
+                          startTransition(() => {
+                            const params = new URLSearchParams(searchParams);
+                            setSelectedContact(contact)
+                            params.set("contactId", contact.id);
+                            router.push(`?${params.toString()}`, {scroll: false});
+                          });
+                        }}
                       >
                         <FontAwesomeIcon
                           icon={faEllipsis}

@@ -10,6 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AddressBook } from "../models/addressBook.ts";
 import { uploadImageToSupabase } from "../utils/storage/index.ts";
 import { getImageData, Photo } from "../utils/image/index.ts";
+import { LinkedinContact } from "./linkedinContact.ts";
 
 // Check if the photo is a base64 encoded string
 
@@ -135,6 +136,16 @@ export class Contact {
 
   get lastUpdated(): Date | undefined {
     return this.#lastUpdated;
+  }
+
+  setLinkedinContact(linkedinContact?: LinkedinContact | null): void {
+    if (linkedinContact) {
+      this.#linkedinContact = linkedinContact.publicIdentifier;
+      this.#linkedinUrn = linkedinContact.entityUrn;
+    } else {
+      this.#linkedinContact = undefined;
+      this.#linkedinUrn = undefined;
+    }
   }
 
   toModel(): ContactModel {

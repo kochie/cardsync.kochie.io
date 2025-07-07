@@ -1,6 +1,7 @@
 {
-    "deno.enablePaths": [
-        "./supabase/functions"
-    ],
-    "deno.importMap": "./supabase/functions/import_map.json",
+    "workbench.editor.customLabels.patterns": {
+        "**/app/**/page.tsx": "${dirname}.${extname}", // route.ts
+        "**/app/**/layout.ts": "${dirname}.${extname} - layout",
+        "**/app/**/slug/page.tsx": "${dirname(1)}.${extname}"
+    }
 }
