@@ -45,7 +45,7 @@ interface AddressBookConnection {
 
 export default function ContactsPage() {
   const supabase = createClient();
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUser();
 
@@ -82,8 +82,6 @@ export default function ContactsPage() {
   // This will be used to filter contacts by the selected address book connection
   const [addressBook, setAddressBook] = useState<string | null>(null);
 
-
-
   // State to hold available CardDAV connections for filtering
   // This will be used to populate the dropdown for selecting address books
   const [availableConnections, setAvailableConnections] = useState<
@@ -117,25 +115,12 @@ export default function ContactsPage() {
       addressBook: string | null,
       search: string,
       sortField: string,
-      sortDirection: string
+      sortDirection: string,
     ) {
       if (!user) {
         setContactsData([]);
         return;
       }
-
-      // const currentPage = searchParams.has("page")
-      //   ? parseInt(searchParams.get("page") ?? "1", 10)
-      //   : 1;
-
-      // const itemsPerPage = searchParams.has("itemsPerPage")
-      //   ? parseInt(searchParams.get("itemsPerPage") ?? "25", 10)
-      //   : 10;
-
-      // const addressBook = searchParams.get("addressBook") || null;
-      // const search = searchParams.get("search") || "";
-
-      console.log("Fetching contacts for user:", user.id);
 
       let orderField = sortField;
       if (sortField === "email") orderField = "emails";
@@ -154,7 +139,7 @@ export default function ContactsPage() {
               id,
               name
             )
-          )`
+          )`,
         )
         .order(orderField, { ascending: sortDirection === "asc" })
         .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -176,28 +161,18 @@ export default function ContactsPage() {
         setContactsData([]);
         return;
       }
-      // Immediately populate contacts with placeholder photoUrls
-      console.log("Fetched contacts:", data);
 
       const newContacts = await Promise.all(
         data
           .slice(0, itemsPerPage)
-          .map(async (contact) => await Contact.fromDatabaseObject(contact))
-        // .map(async (contact) => {
-        //   await contact.then((c) => c.loadPhoto(supabase));
-        //   return contact;
-        // })
+          .map((contact) => Contact.fromDatabaseObject(contact)),
       );
 
       setContactsData(newContacts);
       setIsLastPage(data.length <= itemsPerPage);
     },
-    [user, supabase]
+    [user, supabase],
   );
-
-  useEffect(() => {
-    console.log(contactsData);
-  }, [contactsData]);
 
   useEffect(() => {
     supabase
@@ -217,12 +192,12 @@ export default function ContactsPage() {
             displayName: conn.display_name ?? "Unknown Address Book",
             connectionName: conn.carddav_connections.name,
             connectionId: conn.carddav_connections.id,
-          }))
+          })),
         );
       });
   }, [supabase]);
 
-  useEffect(() => { 
+  useEffect(() => {
     const currentPage = searchParams.has("page")
       ? parseInt(searchParams.get("page") ?? "1", 10)
       : 1;
@@ -242,17 +217,54 @@ export default function ContactsPage() {
     const sortField = searchParams.get("sortField") || "name";
     setSortField(sortField);
 
-    const sortDirection = (searchParams.get("sortDirection") ?? "asc") as "asc" | "desc";
+    const sortDirection = (searchParams.get("sortDirection") ?? "asc") as
+      | "asc"
+      | "desc";
     setSortDirection(sortDirection);
-  }, [searchParams])
+  }, [searchParams]);
 
   useEffect(() => {
+    /**
+     * This effect was a headache. I'm going to try and explain the logic here.
+     *
+     * The goal of this effect is to update the URL search params with the
+     * debounced search term whenever it changes. This allows the search term to
+     * be reflected in the URL and also allows for deep linking to specific
+     * search results.
+     *
+     * The debounced search term is used to prevent unnecessary updates to the
+     * URL when the user is still typing. The debounced value is updated after a
+     * delay, so this effect will only run when the user has stopped typing for
+     * a certain amount of time.
+     *
+     * Also doesn't use searchParams hook directly so the effect will not run if
+     * the params change.
+     */
     const params = new URLSearchParams(window.location.search);
-    // If debouncedSearchTerm matches current search param, do nothing
-    if (debouncedSearchTerm === null || debouncedSearchTerm === params.get("search")) {
+
+    /**
+     * Before the page loads the search term is set to null, so until the value
+     * is read from query params in the other hook this effect should not run.
+     *
+     * It also should not run if the debounced search term is the same as the
+     * current search param in the URL. This prevents unnecessary updates.
+     */
+    if (
+      debouncedSearchTerm === null ||
+      debouncedSearchTerm === params.get("search")
+    ) {
       return;
     }
-    
+
+    /**
+     * If the search term is not empty then update the params to include the
+     * search term and reset the page to 1. If the search term is empty and
+     * there is a search param in the URL, then remove the search param and
+     * reset the page to 1.
+     *
+     * If the search term is empty and there is no search param in the URL, then
+     * do nothing. This prevents the URL from being updated unnecessarily.
+     */
     if (debouncedSearchTerm.length > 0) {
       params.set("search", debouncedSearchTerm);
       params.set("page", "1");
@@ -261,6 +273,11 @@ export default function ContactsPage() {
       params.set("page", "1");
     }
 
+    /**
+     * Lastly, if the current URL search params do not match the updated params,
+     * then push the new params to the router. This will update the URL without
+     * causing a full page reload.
+     */
     if (window.location.search !== `?${params.toString()}`) {
       router.push(`?${params.toString()}`, { scroll: false });
     }
@@ -274,9 +291,17 @@ export default function ContactsPage() {
       addressBook,
       debouncedSearchTerm ?? "",
       sortField,
-      sortDirection
+      sortDirection,
     );
-  }, [fetchContacts, currentPage, itemsPerPage, addressBook, debouncedSearchTerm, sortField, sortDirection]);
+  }, [
+    fetchContacts,
+    currentPage,
+    itemsPerPage,
+    addressBook,
+    debouncedSearchTerm,
+    sortField,
+    sortDirection,
+  ]);
 
   useEffect(() => {
     // Set flyover contact
@@ -294,7 +319,6 @@ export default function ContactsPage() {
     setSelectedContact(null);
   }, [contactsData, searchParams]);
 
-
   const previousPage = useCallback(() => {
     const params = new URLSearchParams(searchParams);
     const currentPage = searchParams.has("page")
@@ -304,7 +328,7 @@ export default function ContactsPage() {
 
     params.set("page", (currentPage - 1).toString());
     return `?${params.toString()}`;
-  }, [searchParams])
+  }, [searchParams]);
 
   const nextPage = useCallback(() => {
     const params = new URLSearchParams(searchParams);
@@ -315,7 +339,7 @@ export default function ContactsPage() {
       : 1;
     params.set("page", (currentPage + 1).toString());
     return `?${params.toString()}`;
-  }, [isLastPage, searchParams])
+  }, [isLastPage, searchParams]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -588,9 +612,11 @@ export default function ContactsPage() {
                         onClick={() => {
                           startTransition(() => {
                             const params = new URLSearchParams(searchParams);
-                            setSelectedContact(contact)
+                            setSelectedContact(contact);
                             params.set("contactId", contact.id);
-                            router.push(`?${params.toString()}`, {scroll: false});
+                            router.push(`?${params.toString()}`, {
+                              scroll: false,
+                            });
                           });
                         }}
                       >
