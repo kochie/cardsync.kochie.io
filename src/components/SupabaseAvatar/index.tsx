@@ -20,14 +20,18 @@ export default function SupabaseAvatar({
   // const supabase = createClient();
   // const { data } = supabase.storage.from("assets").getPublicUrl(path);
 
+  const src = path ? `assets/${path}` : undefined;
   return (
     <Avatar
-      className={clsx("h-13 w-13", className)}
+      className={clsx(
+        "h-13 w-13",
+        className
+      )}
       initials={name
         .split(" ")
         .map((n) => n[0])
         .join("")}
-      src={`assets/${path}`}
+      src={src}
       alt={name}
       square={square}
       blurDataURL={blurDataURL}

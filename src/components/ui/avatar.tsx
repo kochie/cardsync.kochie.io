@@ -41,7 +41,9 @@ export function Avatar({
     >
       {!blurDataURL && initials && (
         <svg
-          className="size-full fill-current p-[5%] text-[48px] font-medium uppercase select-none"
+          className={clsx("size-full fill-current p-[5%] text-[48px] font-medium uppercase select-none",
+            "bg-radial-[at_50%_75%] from-sky-200 via-blue-200 to-indigo-400 to-90%"
+          )}
           viewBox="0 0 100 100"
           aria-hidden={alt ? undefined : "true"}
         >

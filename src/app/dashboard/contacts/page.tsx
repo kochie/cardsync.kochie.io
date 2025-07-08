@@ -96,7 +96,7 @@ export default function ContactsPage() {
   const [, startTransition] = useTransition();
 
   // Used for searching contacts with the db
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const debouncedSearchTerm = useDebounce(searchQuery, 300);
 
   function handleSort(field: string) {
@@ -246,13 +246,33 @@ export default function ContactsPage() {
     setSortDirection(sortDirection);
   }, [searchParams])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    // If debouncedSearchTerm matches current search param, do nothing
+    if (debouncedSearchTerm === null || debouncedSearchTerm === params.get("search")) {
+      return;
+    }
+    
+    if (debouncedSearchTerm.length > 0) {
+      params.set("search", debouncedSearchTerm);
+      params.set("page", "1");
+    } else if (params.has("search")) {
+      params.delete("search");
+      params.set("page", "1");
+    }
+
+    if (window.location.search !== `?${params.toString()}`) {
+      router.push(`?${params.toString()}`, { scroll: false });
+    }
+  }, [debouncedSearchTerm, router]);
+
   // This runs whenever the search params change
   useEffect(() => {
     fetchContacts(
       currentPage,
       itemsPerPage,
       addressBook,
-      debouncedSearchTerm,
+      debouncedSearchTerm ?? "",
       sortField,
       sortDirection
     );
@@ -274,31 +294,6 @@ export default function ContactsPage() {
     setSelectedContact(null);
   }, [contactsData, searchParams]);
 
-  // This effect handles any updates to the search params in the URL
-  useEffect(() => {
-    // Reset to page 1 when search term changes
-    const params = new URLSearchParams(searchParams);
-
-    // If changing the search term, update the page to 1
-    if (
-      searchParams.has("search") &&
-      debouncedSearchTerm !== searchParams.get("search")
-    ) {
-      params.set("page", "1");
-    }
-
-    if (debouncedSearchTerm.length > 0) {
-      params.set("search", debouncedSearchTerm);
-    } else {
-      params.delete("search");
-    }
-
-    const newUrl = `?${searchParams.toString()}`;
-    if (newUrl !== window.location.search) {
-      // Only update the URL if it has changed
-      router.push(newUrl);
-    }
-  }, [debouncedSearchTerm, router, searchParams]);
 
   const previousPage = useCallback(() => {
     const params = new URLSearchParams(searchParams);
@@ -341,7 +336,7 @@ export default function ContactsPage() {
               placeholder="Search&hellip;"
               aria-label="Search"
               onChange={(e) => setSearchQuery(e.target.value)}
-              value={searchQuery}
+              value={searchQuery ?? ""}
               className="w-lg"
             />
           </InputGroup>

@@ -5,33 +5,60 @@ import SupabaseAvatar from "../SupabaseAvatar";
 import { useUser } from "@/app/context/userContext";
 import { VCardProperty } from "@/utils/vcard";
 import { Badge } from "../ui/badge";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faLinkedin } from "@fortawesome/free-brands-svg-icons";
+
+function getBadgeColor(type: string) {
+  switch (type.toLowerCase()) {
+    case "home":
+      return "green";
+    case "work":
+      return "blue";
+    case "mobile":
+      return "orange";
+    default:
+      return "gray";
+  }
+}
+
+function renderGroupedBadge(types: string[]) {
+  if (types.length === 0) return null;
+  const uniqueTypes = Array.from(new Set(types));
+  return (
+    <Badge color={getBadgeColor(uniqueTypes[0])} className="text-xs font-medium px-3 py-1 rounded-full">
+      {uniqueTypes.join(" · ")}
+    </Badge>
+  );
+}
 
 export default function ReadView({ contact }: { contact: Contact }) {
   const { user } = useUser();
 
   // console.log("ReadView contact:", contact);
 
+  const [companyName, companyDept] = (contact.company || "").split(";");
+
   return (
     <div className="max-w-xl mx-auto px-1 py-6 sm:px-2 lg:px-2">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{contact.name}</h2>
-      </div>
-      <div className="flex justify-center mb-4">
+      <div className="flex items-center space-x-4 mb-6">
         <SupabaseAvatar
           path={`users/${user?.id}/contacts/${contact.id}`.toLowerCase()}
           name={contact.name}
           blurDataURL={contact.photoBlurUrl}
-          className="rounded-full shadow-md ring-2 ring-gray-200 dark:ring-gray-700"
+          className="rounded-full shadow-md ring-2 ring-gray-200 dark:ring-gray-700 w-24 h-24"
         />
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{contact.name}</h2>
+          <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{contact.title || "—"}</p>
+        </div>
       </div>
       <div className="space-y-6">
         <div>
-          <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Title</p>
-          <p className="text-base text-gray-900 dark:text-gray-300">{contact.title || "—"}</p>
-        </div>
-        <div>
           <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Company</p>
-          <p className="text-base text-gray-900 dark:text-gray-300">{contact.company || "—"}</p>
+          <p className="text-base text-gray-900 dark:text-gray-300">{companyName || "—"}</p>
+          {companyDept && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{companyDept}</p>
+          )}
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Birthday</p>
@@ -58,7 +85,7 @@ export default function ReadView({ contact }: { contact: Contact }) {
           {contact.addresses.length > 0 ? (
             <ul className="space-y-3">
               {contact.addresses.map((address, i) => (
-                <li key={i} className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                <li key={i} className="flex items-start justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
                   <Address address={address} />
                 </li>
               ))}
@@ -79,11 +106,7 @@ export default function ReadView({ contact }: { contact: Contact }) {
                       {e.value}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {types.map((type) => (
-                        <Badge key={type} className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                          {type}
-                        </Badge>
-                      ))}
+                      {renderGroupedBadge(types)}
                     </div>
                   </li>
                 );
@@ -105,11 +128,7 @@ export default function ReadView({ contact }: { contact: Contact }) {
                       {p.value}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {types.map((type) => (
-                        <Badge key={type} className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                          {type}
-                        </Badge>
-                      ))}
+                      {renderGroupedBadge(types)}
                     </div>
                   </li>
                 );
@@ -133,8 +152,9 @@ export default function ReadView({ contact }: { contact: Contact }) {
                   href={`https://www.linkedin.com/in/${contact.linkedinContact}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
+                  className="text-blue-500 hover:underline flex items-center"
                 >
+                  <FontAwesomeIcon icon={faLinkedin} className="mr-1 text-blue-600" />
                   {contact.linkedinContact}
                 </a>
               ) : (
@@ -167,33 +187,43 @@ function Address({ address }: { address: VCardProperty }) {
   const [pobox, extendedAddress, street, city, region, postalCode, country] =
     address.value.split(";");
 
-  return (
-    <div className="text-base text-gray-900 dark:text-gray-300">
-      {pobox && <div>{pobox}</div>}
-      {(extendedAddress || street) && (
-        <div>
-          {extendedAddress && <span>{extendedAddress} </span>}
-          {street}
-        </div>
-      )}
-      {(city || region || postalCode) && (
-        <div>
-          {city && <span>{city}, </span>}
-          {region && <span>{region} </span>}
-          {postalCode}
-        </div>
-      )}
-      {country && <div>{country}</div>}
+  const fullAddress = `${street || ""}, ${city || ""}, ${region || ""}, ${postalCode || ""}, ${country || ""}`.replace(/(, )+/g, ", ").replace(/^, |, $/g, "").trim();
 
-      {address.params["TYPE"]?.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {address.params["TYPE"].map((type) => (
-            <Badge key={type} className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-              {type}
-            </Badge>
-          ))}
-        </div>
-      )}
-    </div>
+  const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(fullAddress)}&zoom=16&size=200x200&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&markers=color:red%7C${encodeURIComponent(fullAddress)}`;
+
+  return (
+    <>
+      <div className="flex-1 text-base text-gray-900 dark:text-gray-300">
+        {pobox && <div>{pobox}</div>}
+        {(extendedAddress || street) && (
+          <div>
+            {extendedAddress && <span>{extendedAddress} </span>}
+            {street}
+          </div>
+        )}
+        {(city || region || postalCode) && (
+          <div>
+            {city && <span>{city}, </span>}
+            {region && <span>{region} </span>}
+            {postalCode}
+          </div>
+        )}
+        {country && <div>{country}</div>}
+
+        {address.params["TYPE"]?.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {(() => {
+              const types = address.params["TYPE"];
+              return renderGroupedBadge(types);
+            })()}
+          </div>
+        )}
+      </div>
+      <img
+        src={mapUrl}
+        alt="Map preview of address"
+        className="w-32 h-32 rounded-md object-cover shadow"
+      />
+    </>
   );
 }
