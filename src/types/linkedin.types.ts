@@ -158,3 +158,38 @@ export interface Paging {
   start: number;
   links: string[]; // Define specific type if structure is known
 }
+
+// --- LinkedIn Profile View & Contact Info Types ---
+
+export interface LinkedInProfileContactInfo {
+  birthDateOn?: {
+    month: number;
+    day: number;
+  };
+  emailAddress?: string;
+  birthdayVisibilitySetting?: string;
+  entityUrn: string;
+  websites?: LinkedInWebsite[];
+  primaryTwitterHandle?: LinkedInTwitterHandle;
+  twitterHandles?: LinkedInTwitterHandle[];
+  phoneNumbers?: LinkedInPhoneNumber[];
+}
+
+export interface LinkedInWebsite {
+  type: {
+    "com.linkedin.voyager.identity.profile.StandardWebsite": {
+      category: string; // e.g. "PERSONAL", "BLOG", etc.
+    };
+  };
+  url: string;
+}
+
+export interface LinkedInTwitterHandle {
+  name: string;
+  credentialId: string;
+}
+
+export interface LinkedInPhoneNumber {
+  type: string; // e.g. "MOBILE", "HOME", "WORK"
+  number: string; // e.g. "+61434637097"
+}

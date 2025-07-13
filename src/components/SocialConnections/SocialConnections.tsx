@@ -13,64 +13,142 @@ import { Button } from "@/components/ui/button";
 import { ConnectionTableRow } from "./ConnectionTableRow";
 import { createClient } from "@/utils/supabase/client";
 import { useCallback, useEffect, useState } from "react";
-import { LinkedinConnection } from "@/models/linkedinContact";
+import { LinkedinConnection, ConnectionStatus } from "@/models/linkedinContact";
 import { Tables } from "@/types/database.types";
+
+type SocialConnection = {
+  id: string;
+  cookies: string;
+  name: string;
+  sessionId: string;
+  numberContacts: number;
+  lastSynced?: Date;
+  status: ConnectionStatus;
+  syncFrequency: string;
+  username: string;
+  provider: "linkedin" | "instagram";
+};
+
+// Minimal InstagramConnection class for table display
+function instagramToPlainObject(data: Tables<"instagram_connections">): SocialConnection {
+  return {
+    id: data.id,
+    cookies: data.cookies,
+    name: data.name,
+    sessionId: data.session_id,
+    numberContacts: data.follower_count || 0,
+    lastSynced: data.last_synced ? new Date(data.last_synced) : undefined,
+    status: (data.status as ConnectionStatus) || ConnectionStatus.Connected,
+    syncFrequency: data.sync_frequency || "manual",
+    username: data.username || "",
+    provider: "instagram",
+  };
+}
+
+function linkedinToPlainObject(conn: LinkedinConnection): SocialConnection {
+  return {
+    id: conn.id,
+    cookies: conn.cookies,
+    name: conn.name,
+    sessionId: conn.sessionId,
+    numberContacts: conn.numberContacts,
+    lastSynced: conn.lastSynced,
+    status: conn.status,
+    syncFrequency: conn.syncFrequency,
+    username: "",
+    provider: "linkedin",
+  };
+}
 
 export default function SocialConnections() {
   const supabase = createClient();
 
-  const [connections, setConnections] = useState<LinkedinConnection[]>([]);
+  const [connections, setConnections] = useState<SocialConnection[]>([]);
 
   const fetchConnections = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("linkedin_connections")
-      .select("*");
+    const [{ data: linkedinData, error: linkedinError }, { data: instagramData, error: instagramError }] = await Promise.all([
+      supabase.from("linkedin_connections").select("*"),
+      supabase.from("instagram_connections").select("*"),
+    ]);
 
-    if (error) {
-      console.error("Error fetching connections:", error);
+    if (linkedinError || instagramError) {
+      console.error("Error fetching connections:", linkedinError, instagramError);
       return;
     }
 
-    const formattedConnections = data.map((connection) =>
-      LinkedinConnection.fromDatabaseObject(connection)
-    );
+    const linkedinConnections: SocialConnection[] = (linkedinData || []).map((connection) => linkedinToPlainObject(LinkedinConnection.fromDatabaseObject(connection)));
+    const instagramConnections: SocialConnection[] = (instagramData || []).map((connection) => instagramToPlainObject(connection));
 
-
-    setConnections(formattedConnections);
+    setConnections([...linkedinConnections, ...instagramConnections]);
   }, [supabase]);
 
   const listenForConnectionChanges = useCallback(() => {
-    const channels = supabase
-      .channel("custom-all-channel")
-      .on<Tables<"linkedin_connections">>(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "linkedin_connections" },
-        (payload) => {
+    const channel = supabase.channel("social-connections-channel");
+
+    // LinkedIn
+    channel.on<Tables<"linkedin_connections">>(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "linkedin_connections" },
+      (payload) => {
+        setConnections((prev) => {
           if (payload.eventType === "DELETE") {
-            setConnections((prev) =>
-              prev.filter((account) => account.id !== payload.old.id)
-            );
+            return prev.filter((account) => account.id !== payload.old.id);
           } else if (payload.eventType === "INSERT") {
-            setConnections((prev) => [
+            return [
               ...prev,
-              LinkedinConnection.fromDatabaseObject(payload.new),
-            ]);
+              linkedinToPlainObject(LinkedinConnection.fromDatabaseObject(payload.new)),
+            ];
           } else if (payload.eventType === "UPDATE") {
-            setConnections((prev) =>
-              prev.map((account) =>
-                account.id === payload.new?.id
-                  ? LinkedinConnection.fromDatabaseObject(payload.new)
-                  : account
-              )
+            return prev.map((account) =>
+              account.id === payload.new?.id && account.provider === "linkedin"
+                ? linkedinToPlainObject(LinkedinConnection.fromDatabaseObject(payload.new))
+                : account
             );
           }
-          console.log("Change received!", payload);
-        }
-      )
-      .subscribe();
+          return prev;
+        });
+        console.log("LinkedIn change received!", payload);
+      }
+    );
 
-    return channels
+    // Instagram
+    channel.on<Tables<"instagram_connections">>(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "instagram_connections" },
+      (payload) => {
+        setConnections((prev) => {
+          if (payload.eventType === "DELETE") {
+            return prev.filter((account) => account.id !== payload.old.id);
+          } else if (payload.eventType === "INSERT") {
+            return [
+              ...prev,
+              instagramToPlainObject(payload.new),
+            ];
+          } else if (payload.eventType === "UPDATE") {
+            return prev.map((account) =>
+              account.id === payload.new?.id && account.provider === "instagram"
+                ? instagramToPlainObject(payload.new)
+                : account
+            );
+          }
+          return prev;
+        });
+        console.log("Instagram change received!", payload);
+      }
+    );
+
+    channel.subscribe();
+    return channel;
   }, [supabase]);
+
+  const handleDelete = async (id: string, provider: string) => {
+    if (provider === "linkedin") {
+      await supabase.from("linkedin_connections").delete().eq("id", id);
+    } else if (provider === "instagram") {
+      await supabase.from("instagram_connections").delete().eq("id", id);
+    }
+    // UI will update automatically due to realtime subscription
+  };
 
   useEffect(() => {
     fetchConnections();
@@ -101,8 +179,9 @@ export default function SocialConnections() {
             <TableBody>
               {connections.map((connection) => (
                 <ConnectionTableRow
-                  key={connection.id}
+                  key={connection.id + connection.provider}
                   connection={connection}
+                  onDelete={handleDelete}
                 />
               ))}
             </TableBody>

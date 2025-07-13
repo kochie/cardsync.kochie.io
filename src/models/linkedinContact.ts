@@ -1,5 +1,5 @@
 import { Tables } from "../types/database.types.ts";
-import { Element, LinkedInProfile } from "../types/linkedin.types.ts";
+import { Element, LinkedInProfile, LinkedInProfileContactInfo, LinkedInPhoneNumber, LinkedInWebsite, LinkedInTwitterHandle } from "../types/linkedin.types.ts";
 
 export enum ConnectionStatus {
     Connected = "connected",
@@ -31,6 +31,7 @@ export interface LinkedinContactModel {
     url: string;
     type?: string; // e.g., "PERSONAL", "WORK"
   }[];
+  internalId?: string;
 }
 
 export interface LinkedinConnectionModel {
@@ -106,22 +107,17 @@ export class LinkedinContact {
   #publicIdentifier: string;
   #headline?: string;
   #profilePicture?: string;
-  #birthDate?: string; // Format: YYYY-MM-DD or MM-DD
-  #phoneNumbers: {
-    type: string; // e.g., "MOBILE", "HOME", "WORK"
-    number: string;
-  }[];
-  #emailAddresses: {
-    emailAddress: string;
-    type?: string; // e.g., "PERSONAL", "WORK"
-  }[];
+  #birthDateOn?: { month: number; day: number };
+  #birthdayVisibilitySetting?: string;
+  #phoneNumbers: LinkedInPhoneNumber[];
+  #emailAddress?: string;
+  #twitterHandles?: LinkedInTwitterHandle[];
+  #primaryTwitterHandle?: LinkedInTwitterHandle;
   #addresses: string[];
-  #websites: {
-    url: string;
-    type?: string; // e.g., "PERSONAL", "WORK"
-  }[];
+  #websites: { url: string; type?: string }[];
+  #internalId?: string;
 
-  constructor(model: LinkedinContactModel) {
+  constructor(model: LinkedinContactModel & Partial<LinkedInProfileContactInfo>) {
     this.#connectionId = model.connectionId;
     this.#entityUrn = model.entityUrn;
     this.#firstName = model.firstName;
@@ -130,11 +126,20 @@ export class LinkedinContact {
     this.#publicIdentifier = model.publicIdentifier;
     this.#headline = model.headline;
     this.#profilePicture = model.profilePicture;
-    this.#birthDate = model.birthDate;
+    this.#birthDateOn = model.birthDateOn;
+    this.#birthdayVisibilitySetting = model.birthdayVisibilitySetting;
     this.#phoneNumbers = model.phoneNumbers || [];
-    this.#emailAddresses = model.emailAddresses || [];
+    this.#emailAddress = model.emailAddress;
+    this.#twitterHandles = model.twitterHandles;
+    this.#primaryTwitterHandle = model.primaryTwitterHandle;
     this.#addresses = model.addresses || [];
-    this.#websites = model.websites || [];
+    this.#websites = (model.websites || []).map((w: any) => ({
+      url: w.url,
+      type: typeof w.type === "string"
+        ? w.type
+        : w.type?.["com.linkedin.voyager.identity.profile.StandardWebsite"]?.category || undefined
+    }));
+    this.#internalId = (model as any).internalId || (model as any).internal_id;
   }
 
   get id(): string {
@@ -159,13 +164,19 @@ export class LinkedinContact {
     return this.#profilePicture;
   }
   get birthDate(): string | undefined {
-    return this.#birthDate;
+    return this.#birthDateOn ? `${this.#birthDateOn.month}-${this.#birthDateOn.day}` : undefined;
   }
-  get phoneNumbers(): { type: string; number: string }[] {
+  get phoneNumbers(): LinkedInPhoneNumber[] {
     return this.#phoneNumbers;
   }
-  get emailAddresses(): { emailAddress: string; type?: string }[] {
-    return this.#emailAddresses;
+  get emailAddress(): string | undefined {
+    return this.#emailAddress;
+  }
+  get twitterHandles(): LinkedInTwitterHandle[] | undefined {
+    return this.#twitterHandles;
+  }
+  get primaryTwitterHandle(): LinkedInTwitterHandle | undefined {
+    return this.#primaryTwitterHandle;
   }
   get addresses(): string[] {
     return this.#addresses; 
@@ -174,10 +185,25 @@ export class LinkedinContact {
     return this.#websites;
   }
 
-  static fromDatabaseObject(
-    data: Tables<"linkedin_contacts">
-  ): LinkedinContact {
-    const contact: LinkedinContactModel = {
+  get internal_id(): string | undefined {
+    return this.#internalId;
+  }
+  get internalId(): string | undefined {
+    return this.#internalId;
+  }
+
+  static fromDatabaseObject(data: Tables<"linkedin_contacts">): LinkedinContact {
+    // Helper: safely parse Json[] to expected types
+    function parseJsonArray<T>(arr: unknown): T[] {
+      if (!arr) return [];
+      if (Array.isArray(arr)) return arr as T[];
+      return [];
+    }
+    function parseJson<T>(val: unknown): T | undefined {
+      if (!val) return undefined;
+      return val as T;
+    }
+    return new LinkedinContact({
       connectionId: data.connection_id,
       publicIdentifier: data.public_identifier ?? "",
       entityUrn: data.entity_urn,
@@ -185,94 +211,67 @@ export class LinkedinContact {
       lastName: data.last_name ?? undefined,
       headline: data.headline ?? undefined,
       fullName: data.full_name ?? undefined,
-      birthDate: data.birth_date
-        ? data.birth_date.split("-").slice(1).join("-") // Convert YYYY-MM
-        : undefined,
-      phoneNumbers: data.phone_numbers?.map((phone) => {
-        const [type, number] = phone.split(":", 2);
-        return { type: type || "UNKNOWN", number: number || "" };
-      }) ?? [],
-      emailAddresses: data.emails?.map((email) => {
-        const [type, emailAddress] = email.split(":", 2);
-        return {
-          emailAddress: emailAddress || "",
-          type: type || "UNKNOWN",
-        };
-      }) ?? [],
-      addresses: data.addresses?.[0]?.split(";") || [],
-      websites: data.websites?.map((website) => {
-        const [type, url] = website.split(":", 2);
-        return {
-          url: url || "",
-          type: type || "UNKNOWN",
-        };
-      }) ?? [],
       profilePicture: data.profile_picture ?? undefined,
-    };
-    return new LinkedinContact(contact);
+      birthDateOn: data.birth_date ? (data.birth_date as { month: number; day: number }) : undefined,
+      phoneNumbers: parseJsonArray<LinkedInPhoneNumber>(data.phone_numbers),
+      emailAddresses: (data.email_address ?? []).map(e => ({ emailAddress: e })),
+      twitterHandles: parseJsonArray<LinkedInTwitterHandle>(data.twitter_handles),
+      websites: parseJsonArray<any>(data.websites).map((w: any) => ({
+        url: w.url,
+        type: w.type || (w.type && w.type["com.linkedin.voyager.identity.profile.StandardWebsite"]?.category) || undefined
+      })),
+      internalId: typeof (data as any).internal_id === 'string' ? (data as any).internal_id : undefined,
+    });
   }
 
   static fromLinkedinData(
     element: Element,
-    profile: LinkedInProfile,
+    profile: LinkedInProfileContactInfo,
     connectionId: string
   ): LinkedinContact {
     let pictureUrl;
-
     const artifacts =
       element.connectedMemberResolutionResult?.profilePicture?.displayImageReference?.vectorImage?.artifacts?.sort(
         (a, b) => a.width - b.width
       );
     const rootUrl =
-      element.connectedMemberResolutionResult?.profilePicture
-        ?.displayImageReference?.vectorImage?.rootUrl;
+      element.connectedMemberResolutionResult?.profilePicture?.displayImageReference?.vectorImage?.rootUrl;
     if (artifacts && artifacts.length > 0 && rootUrl) {
       const largestArtifact = artifacts[artifacts.length - 1];
       pictureUrl = rootUrl + largestArtifact?.fileIdentifyingUrlPathSegment;
     }
 
-    const contact: LinkedinContactModel = {
+    return new LinkedinContact({
       connectionId: connectionId,
-      publicIdentifier:
-        element.connectedMemberResolutionResult?.publicIdentifier || "",
+      publicIdentifier: element.connectedMemberResolutionResult?.publicIdentifier || "",
       entityUrn: element.entityUrn,
       firstName: element.connectedMemberResolutionResult?.firstName || "",
       lastName: element.connectedMemberResolutionResult?.lastName || "",
       headline: element.connectedMemberResolutionResult?.headline || "",
-      fullName:
-        `${element.connectedMemberResolutionResult?.firstName} ${element.connectedMemberResolutionResult?.lastName}`.toLowerCase(),
-      birthDate: profile.birthDateOn
-        ? `${profile.birthDateOn.month}-${profile.birthDateOn.day}`
-        : undefined,
-      phoneNumbers:
-        profile.phoneNumbers?.map((phone) => ({
-          type: phone.type || "UNKNOWN",
-          number: phone.phoneNumber.number,
-        })) ?? [],
-      emailAddresses: profile.emailAddress
-        ? [
-            {
-              emailAddress: profile.emailAddress.emailAddress,
-              type: profile.emailAddress.type || "UNKNOWN",
-            },
-          ]
-        : [],
-      addresses: profile.address ? [profile.address] : [],
-      websites:
-        profile.websites?.map((website) => ({
-          url: website.url,
-          type: website.category || "UNKNOWN",
-        })) || [],
+      fullName: `${element.connectedMemberResolutionResult?.firstName} ${element.connectedMemberResolutionResult?.lastName}`.toLowerCase(),
       profilePicture: pictureUrl,
-    };
-
-    return new LinkedinContact(contact);
+      birthDateOn: profile.birthDateOn,
+      birthdayVisibilitySetting: profile.birthdayVisibilitySetting,
+      phoneNumbers: profile.phoneNumbers ?? [],
+      emailAddress: profile.emailAddress ?? undefined,
+      twitterHandles: profile.twitterHandles ?? undefined,
+      primaryTwitterHandle: profile.primaryTwitterHandle ?? undefined,
+      addresses: [], // LinkedIn API does not provide addresses in new endpoints
+      websites: (profile.websites ?? []).map((w: any) => ({
+        url: w.url,
+        type: typeof w.type === "string"
+          ? w.type
+          : w.type?.["com.linkedin.voyager.identity.profile.StandardWebsite"]?.category || undefined
+      })),
+    });
   }
 
-  toDatabaseObject(): Omit<
-    Tables<"linkedin_contacts">,
-    "user_id" | "created_at"
-  > {
+  toDatabaseObject(): Omit<Tables<"linkedin_contacts">, "user_id" | "created_at" | "internal_id"> {
+    function toJsonArray(val: any) {
+      if (!val) return null;
+      if (Array.isArray(val)) return val;
+      return [val];
+    }
     return {
       headline: this.#headline ?? null,
       entity_urn: this.#entityUrn,
@@ -283,20 +282,12 @@ export class LinkedinContact {
       public_identifier: this.#publicIdentifier,
       connection_id: this.#connectionId.replace("linkedin:", ""),
       last_synced: new Date().toISOString(),
-      birth_date: this.#birthDate
-        ? new Date(`1900-${this.#birthDate}`).toISOString()
-        : null,
-      phone_numbers:
-        this.#phoneNumbers?.map((phone) => `${phone.type}:${phone.number}`) ??
-        [],
-      emails:
-        this.#emailAddresses?.map(
-          (email) => `${email.type}:${email.emailAddress}`
-        ) ?? [],
-      addresses: [this.#addresses?.join(";") ?? ""],
-      websites:
-        this.#websites?.map((website) => `${website.type}:${website.url}`) ??
-        [],
+      birth_date: this.#birthDateOn ?? null,
+      phone_numbers: toJsonArray(this.#phoneNumbers),
+      email_address: this.#emailAddress ? [this.#emailAddress] : null,
+      twitter_handles: toJsonArray(this.#twitterHandles),
+      addresses: toJsonArray(this.#addresses),
+      websites: toJsonArray(this.#websites),
     };
   }
 }

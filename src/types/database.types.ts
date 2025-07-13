@@ -17,10 +17,10 @@ export type Database = {
     Functions: {
       graphql: {
         Args: {
-          query?: string
           operationName?: string
-          extensions?: Json
+          query?: string
           variables?: Json
+          extensions?: Json
         }
         Returns: Json
       }
@@ -137,11 +137,15 @@ export type Database = {
           company: string | null
           created_at: string
           emails: string[]
+          hidden: boolean
           id: string
           id_is_uppercase: boolean | null
+          instagram_id: string | null
           last_updated: string
-          linkedin_contact: string | null
+          linkedin_id: string | null
           name: string | null
+          notes: string[] | null
+          other: Json | null
           phones: string[]
           photo_blur_url: string | null
           role: string | null
@@ -155,11 +159,15 @@ export type Database = {
           company?: string | null
           created_at?: string
           emails: string[]
+          hidden?: boolean
           id?: string
           id_is_uppercase?: boolean | null
+          instagram_id?: string | null
           last_updated: string
-          linkedin_contact?: string | null
+          linkedin_id?: string | null
           name?: string | null
+          notes?: string[] | null
+          other?: Json | null
           phones: string[]
           photo_blur_url?: string | null
           role?: string | null
@@ -173,11 +181,15 @@ export type Database = {
           company?: string | null
           created_at?: string
           emails?: string[]
+          hidden?: boolean
           id?: string
           id_is_uppercase?: boolean | null
+          instagram_id?: string | null
           last_updated?: string
-          linkedin_contact?: string | null
+          linkedin_id?: string | null
           name?: string | null
+          notes?: string[] | null
+          other?: Json | null
           phones?: string[]
           photo_blur_url?: string | null
           role?: string | null
@@ -193,11 +205,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "contacts_linkedin_contact_fkey"
-            columns: ["linkedin_contact"]
+            foreignKeyName: "carddav_contacts_instagram_id_fkey"
+            columns: ["instagram_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_contacts"
+            referencedColumns: ["internal_id"]
+          },
+          {
+            foreignKeyName: "carddav_contacts_linkedin_id_fkey"
+            columns: ["linkedin_id"]
             isOneToOne: false
             referencedRelation: "linkedin_contacts"
-            referencedColumns: ["entity_urn"]
+            referencedColumns: ["internal_id"]
           },
         ]
       }
@@ -281,6 +300,122 @@ export type Database = {
           },
         ]
       }
+      instagram_connections: {
+        Row: {
+          cookies: string
+          created_at: string
+          follower_count: number
+          following_count: number
+          id: string
+          instagram_id: string
+          last_synced: string | null
+          name: string
+          session_id: string
+          status: string
+          sync_frequency: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          cookies: string
+          created_at?: string
+          follower_count?: number
+          following_count?: number
+          id?: string
+          instagram_id?: string
+          last_synced?: string | null
+          name: string
+          session_id: string
+          status?: string
+          sync_frequency?: string
+          user_id?: string
+          username: string
+        }
+        Update: {
+          cookies?: string
+          created_at?: string
+          follower_count?: number
+          following_count?: number
+          id?: string
+          instagram_id?: string
+          last_synced?: string | null
+          name?: string
+          session_id?: string
+          status?: string
+          sync_frequency?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      instagram_contacts: {
+        Row: {
+          connection_id: string
+          created_at: string
+          followed_by_viewer: boolean
+          follower_count: number
+          following_count: number
+          follows_viewer: boolean
+          full_name: string | null
+          internal_id: string
+          is_private: boolean
+          is_verified: boolean
+          last_synced: string | null
+          mutual_followers: string[]
+          profile_picture: string | null
+          requested_by_viewer: boolean
+          user_id: string | null
+          user_id_instagram: string
+          username: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          followed_by_viewer?: boolean
+          follower_count?: number
+          following_count?: number
+          follows_viewer?: boolean
+          full_name?: string | null
+          internal_id?: string
+          is_private?: boolean
+          is_verified?: boolean
+          last_synced?: string | null
+          mutual_followers?: string[]
+          profile_picture?: string | null
+          requested_by_viewer?: boolean
+          user_id?: string | null
+          user_id_instagram: string
+          username: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          followed_by_viewer?: boolean
+          follower_count?: number
+          following_count?: number
+          follows_viewer?: boolean
+          full_name?: string | null
+          internal_id?: string
+          is_private?: boolean
+          is_verified?: boolean
+          last_synced?: string | null
+          mutual_followers?: string[]
+          profile_picture?: string | null
+          requested_by_viewer?: boolean
+          user_id?: string | null
+          user_id_instagram?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_contacts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linkedin_connections: {
         Row: {
           cookies: string
@@ -322,58 +457,64 @@ export type Database = {
       }
       linkedin_contacts: {
         Row: {
-          addresses: string[] | null
-          birth_date: string | null
+          addresses: Json[] | null
+          birth_date: Json | null
           connection_id: string
           created_at: string
-          emails: string[] | null
+          email_address: string[] | null
           entity_urn: string
           first_name: string | null
           full_name: string | null
           headline: string | null
+          internal_id: string
           last_name: string | null
           last_synced: string | null
-          phone_numbers: string[] | null
+          phone_numbers: Json[] | null
           profile_picture: string | null
           public_identifier: string | null
+          twitter_handles: Json | null
           user_id: string | null
-          websites: string[] | null
+          websites: Json[] | null
         }
         Insert: {
-          addresses?: string[] | null
-          birth_date?: string | null
+          addresses?: Json[] | null
+          birth_date?: Json | null
           connection_id: string
           created_at?: string
-          emails?: string[] | null
+          email_address?: string[] | null
           entity_urn: string
           first_name?: string | null
           full_name?: string | null
           headline?: string | null
+          internal_id?: string
           last_name?: string | null
           last_synced?: string | null
-          phone_numbers?: string[] | null
+          phone_numbers?: Json[] | null
           profile_picture?: string | null
           public_identifier?: string | null
+          twitter_handles?: Json | null
           user_id?: string | null
-          websites?: string[] | null
+          websites?: Json[] | null
         }
         Update: {
-          addresses?: string[] | null
-          birth_date?: string | null
+          addresses?: Json[] | null
+          birth_date?: Json | null
           connection_id?: string
           created_at?: string
-          emails?: string[] | null
+          email_address?: string[] | null
           entity_urn?: string
           first_name?: string | null
           full_name?: string | null
           headline?: string | null
+          internal_id?: string
           last_name?: string | null
           last_synced?: string | null
-          phone_numbers?: string[] | null
+          phone_numbers?: Json[] | null
           profile_picture?: string | null
           public_identifier?: string | null
+          twitter_handles?: Json | null
           user_id?: string | null
-          websites?: string[] | null
+          websites?: Json[] | null
         }
         Relationships: [
           {
@@ -390,8 +531,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      match_instagram_by_name: {
+        Args: { p_connection_id: string }
+        Returns: number
+      }
       match_linkedin_by_name: {
-        Args: Record<PropertyKey, never>
+        Args: { p_connection_id: string }
         Returns: number
       }
     }

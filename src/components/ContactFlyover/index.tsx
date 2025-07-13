@@ -1,6 +1,6 @@
 "use client";
 
-import { Contact, ContactModel } from "@/models/contacts";
+import { Contact } from "@/models/contacts";
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import { useEffect, useState } from "react";
 
@@ -20,17 +20,15 @@ import clsx from "clsx";
 type ContactFlyoverProps = {
   contact: Contact | null;
   onClose: () => void;
+  initialEditMode?: boolean;
 };
 
 export default function ContactFlyover({
   contact,
   onClose,
+  initialEditMode = false,
 }: ContactFlyoverProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editableContact, setEditableContact] = useState<ContactModel | null>(
-    null
-  );
+  const [isEditing, setIsEditing] = useState(initialEditMode);
 
   const [selectedLinkedin, setSelectedLinkedin] = useState<
     LinkedinContact | undefined
@@ -42,10 +40,14 @@ export default function ContactFlyover({
 
   useEffect(() => {
     setOpen(Boolean(contact));
-  }, [contact]);
+    if (contact && initialEditMode) {
+      setIsEditing(true);
+    }
+  }, [contact, initialEditMode]);
 
   const handleClose = () => {
     setOpen(false);
+    setIsEditing(false);
     onClose();
   };
 
@@ -70,35 +72,42 @@ export default function ContactFlyover({
       });
   }, [supabase, contact]);
 
-  useEffect(() => {
-    if (!contact) return;
-
-    setEditableContact(contact.toModel());
-  }, [contact, supabase]);
 
   async function pushToCardDavServer() {
     if (contact) await cardDavSyncPush(contact.addressBook.id, [contact.id]);
   }
 
-  async function saveContact() {
-    if (!editableContact) return;
-
-    setIsSaving(true);
+  async function saveContact(contact: Contact) {
     const { error } = await supabase
       .from("carddav_contacts")
-      .update(new Contact(editableContact).toDatabaseObject())
-      .eq("id", editableContact.id);
+      .update(contact.toDatabaseObject())
+      .eq("id", contact.id);
 
     if (error) {
       console.error("Error saving contact:", error);
-      setIsSaving(false);
-      return;
+      throw error
     }
-
-    setIsSaving(false);
   }
 
   const { user } = useUser();
+
+  // Fetch groups for the contact
+  const [groups, setGroups] = useState<any[]>([]);
+  useEffect(() => {
+    if (!contact) return;
+    supabase
+      .from("carddav_group_members")
+      .select(`group_id, carddav_groups (id, name, description, address_book)`)
+      .eq("member_id", contact.id)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching groups for contact:", error);
+          setGroups([]);
+          return;
+        }
+        setGroups((data ?? []).map((gm: any) => gm.carddav_groups).filter(Boolean));
+      });
+  }, [contact, supabase]);
 
   if (!contact || !user) return null;
 
@@ -155,7 +164,7 @@ export default function ContactFlyover({
               selectedLinkedin={selectedLinkedin}
             />
           ) : (
-            <ReadView contact={contact} />
+            <ReadView contact={contact} groups={groups} />
           )}
         </DialogPanel>
       </div>

@@ -48,3 +48,12 @@ export async function addLinkedinCookie(
     success: "Cookie added successfully",
   };
 }
+
+export async function matchLinkedinByName(connectionId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("match_linkedin_by_name", { p_connection_id: connectionId });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+} 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { IconProp, library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
@@ -9,8 +8,10 @@ import { fas } from "@fortawesome/free-solid-svg-icons"; // For default icon
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Settings } from "lucide-react";
-import { ConnectionStatus, LinkedinConnection } from "@/models/linkedinContact";
+import { ConnectionStatus } from "@/models/linkedinContact";
+import { Dropdown, DropdownButton, DropdownMenu, DropdownItem } from "@/components/ui/dropdown";
+import { matchInstagramByName } from "@/actions/connections/instagram";
+import { matchLinkedinByName } from "@/actions/connections/linkedin";
 
 library.add(fab, fas);
 
@@ -53,17 +54,29 @@ const getStatusColor = (status: ConnectionStatus): BadgeProps["color"] => {
   }
 }
 
+// Use SocialConnection type from SocialConnections.tsx (plain object)
 export function ConnectionTableRow({
   connection,
+  onDelete,
 }: {
-  connection: LinkedinConnection;
+  connection: {
+    id: string;
+    cookies: string;
+    name: string;
+    sessionId: string;
+    numberContacts: number;
+    lastSynced?: Date;
+    status: ConnectionStatus;
+    syncFrequency: string;
+    username: string;
+    provider: "linkedin" | "instagram";
+  };
+  onDelete?: (id: string, provider: string) => void;
 }) {
   const [pending, setPending] = useState(false);
 
   const handleSync = async () => {
     setPending(true);
-    // Here, you might want a more generic sync action dispatcher
-    // based on connection.provider if you have multiple sync actions.
     fetch("/api/connection-sync", {
       method: "POST",
       headers: {
@@ -71,18 +84,38 @@ export function ConnectionTableRow({
       },
       body: JSON.stringify({
         connectionId: connection.id,
+        provider: connection.provider,
       }),
     });
-
     setPending(false);
+  };
+
+  const handleMatch = async () => {
+    setPending(true);
+    if (connection.provider === "instagram") {
+      await matchInstagramByName(connection.id)
+    } else if (connection.provider === "linkedin") {
+      await matchLinkedinByName(connection.id)
+    }
+    setPending(false);
+  };
+
+  const handleEdit = () => {
+    window.location.href = `/dashboard/connections/edit/${connection.provider}/${connection.id}`;
+  };
+
+  const handleDelete = () => {
+    if (confirm("Are you sure you want to delete this connection?") && onDelete) {
+      onDelete(connection.id, connection.provider);
+    }
   };
 
   return (
     <TableRow>
       <TableCell>
         <div className="flex items-center gap-2">
-          <FontAwesomeIcon icon={getIcon("linkedin")} className="h-5 w-5" />
-          Linkedin
+          <FontAwesomeIcon icon={getIcon(connection.provider)} className="h-5 w-5" />
+          {connection.provider.charAt(0).toUpperCase() + connection.provider.slice(1)}
         </div>
       </TableCell>
       <TableCell className="font-medium">{connection.name}</TableCell>
@@ -97,31 +130,15 @@ export function ConnectionTableRow({
         <Badge color={getStatusColor(connection.status)}>{connection.status}</Badge>
       </TableCell>
       <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          <Button outline onClick={handleSync} disabled={pending}>
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                Syncing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-1.5" />
-                Sync Now
-              </>
-            )}
-          </Button>
-          {connection.status === ConnectionStatus.Connected && (
-            <Button outline>
-              <Link href={`/dashboard/connections/${connection.id}/settings`}>
-                {" "}
-                {/* Assuming settings page uses ID */}
-                <Settings className="h-4 w-4 mr-1.5" />
-                Settings
-              </Link>
-            </Button>
-          )}
-        </div>
+        <Dropdown>
+          <DropdownButton as={Button} outline>Actions</DropdownButton>
+          <DropdownMenu anchor="bottom end">
+            <DropdownItem onClick={handleSync}>Sync</DropdownItem>
+            <DropdownItem onClick={handleEdit}>Edit</DropdownItem>
+            <DropdownItem onClick={handleMatch}>Match</DropdownItem>
+            <DropdownItem onClick={handleDelete}>Delete</DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
       </TableCell>
     </TableRow>
   );

@@ -1,9 +1,15 @@
 import { LinkedinConnection } from "@/models/linkedinContact";
-import { Element, LinkedInProfile, Root } from "@/types/linkedin.types";
+import { Element, LinkedInProfileContactInfo, Root } from "@/types/linkedin.types";
 import asyncPool from "tiny-async-pool";
 import { getProfileData } from "./profile";
 
-export async function getLinkedinConnections(connection: LinkedinConnection) {
+// Helper function to add random delay simulating human behavior
+function randomDelay(min: number, max: number): Promise<void> {
+  const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+  return new Promise(resolve => setTimeout(resolve, delay));
+}
+
+export async function* getLinkedinConnections(connection: LinkedinConnection): AsyncGenerator<[Element, LinkedInProfileContactInfo], void, unknown> {
   const options = {
     method: "GET",
     headers: {
@@ -26,10 +32,13 @@ export async function getLinkedinConnections(connection: LinkedinConnection) {
     "com.linkedin.voyager.dash.deco.web.mynetwork.ConnectionListWithProfile-16"
   );
 
-  const profiles: [Element, LinkedInProfile][] = [];
-
   do {
     try {
+      // Add random delay between page requests (2-5 seconds)
+      if (start > 0) {
+        await randomDelay(2000, 5000);
+      }
+      
       url.searchParams.set("start", start.toString());
       const response = await fetch(url, options);
       if (!response.ok) {
@@ -41,7 +50,7 @@ export async function getLinkedinConnections(connection: LinkedinConnection) {
 
       const iteratorFn = async (
         el: Element
-      ): Promise<[Element, LinkedInProfile]> => {
+      ): Promise<[Element, LinkedInProfileContactInfo]> => {
         if (el.connectedMemberResolutionResult?.publicIdentifier) {
           return [
             el,
@@ -54,16 +63,18 @@ export async function getLinkedinConnections(connection: LinkedinConnection) {
           return [
             el,
             {
-              publicIdentifier: "",
-            } as LinkedInProfile,
+              entityUrn: el.entityUrn,
+            } as LinkedInProfileContactInfo,
           ];
         }
       };
 
-      
-
-      for await (const value of asyncPool(10, data.elements, iteratorFn)) {
-        profiles.push(value);
+      // Reduce concurrency and add delays between batches
+      for await (const value of asyncPool(3, data.elements, iteratorFn)) {
+        // Yield each profile as it's processed
+        yield value;
+        // Add small delay between profile processing (0.2-0.8 seconds)
+        await randomDelay(200, 800);
       }
 
       if (data.elements.length < count) {
@@ -75,6 +86,4 @@ export async function getLinkedinConnections(connection: LinkedinConnection) {
       console.error(error);
     }
   } while (!isLastPage);
-
-  return profiles;
 }

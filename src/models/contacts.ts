@@ -33,11 +33,18 @@ export interface ContactModel {
   company?: string; // Company name
   title?: string; // Job title
   role?: string; // Job title
-  linkedinContact?: string; // Optional, used for tracking connections
+  linkedinContact?: string; // public_identifier for display
+  linkedinContactId?: string; // internal_id for linking
+  instagramUsername?: string; // Optional, used for tracking connections
+  instagramContactId?: string; // Optional, used for tracking connections
+  instagramConnectionId?: string; // Optional, used for tracking connections
   linkedinUrn?: string; // Optional, used for tracking connections
   photoBlurUrl?: string; // Optional, used for tracking connections
   addressBook: AddressBook; // Optional, used for tracking connections
   birthday?: Date;
+  notes?: string[]; // Optional notes field, not part of the vCard spec
+  others?: VCardProperty[]; // Other properties not part of the vCard spec or not yet implemented
+  hidden?: boolean; // Whether the contact is hidden
 }
 export class Contact {
   readonly id: string; // UID;REV:12345;67890
@@ -51,10 +58,19 @@ export class Contact {
   #title?: string; // Job title
   #role?: string; // Job title
   #linkedinContact?: string;
+  #linkedinContactId?: string; // internal_id for linking
   #linkedinUrn?: string; // Optional, used for tracking connections
+
+  #instagramUsername?: string; // Optional, used for tracking connections
+  #instagramContactId?: string;
+  #instagramConnectionId?: string;
+
   #birthday?: Date;
   #addressBook: AddressBook;
   #photoBlurUrl?: string; // Optional, used for tracking connections
+  #notes: string[]; // Optional notes field, not part of the vCard spec
+  #others: VCardProperty[]; // Other properties not part of the vCard spec or not yet implemented
+  #hidden: boolean; // Whether the contact is hidden
 
   constructor({
     id,
@@ -69,25 +85,52 @@ export class Contact {
     title,
     addressBook,
     linkedinContact,
+    linkedinContactId,
     linkedinUrn,
+    instagramUsername,
+    instagramContactId,
+    instagramConnectionId,
     birthday,
-    photoBlurUrl
+    photoBlurUrl,
+    notes = [],
+    others = [],
+    hidden = false,
   }: ContactModel) {
     this.id = id;
     this.#name = name;
     this.#addresses = addresses;
-    this.#emails = emails;
-    this.#phones = phones;
+    
+    // Normalize emails
+    this.#emails = emails.map(email => {
+      const normalizedValue = normalizeEmail(email.value);
+      return new VCardProperty(email.key, email.params, normalizedValue);
+    });
+    
+    // Normalize phone numbers
+    this.#phones = phones.map(phone => {
+      const normalizedValue = normalizePhoneNumber(phone.value);
+      return new VCardProperty(phone.key, phone.params, normalizedValue);
+    });
+    
     this.#photos = photos;
     this.#lastUpdated = lastUpdated ? new Date(lastUpdated) : undefined;
     this.#company = company;
     this.#title = title;
     this.#role = role;
     this.#linkedinContact = linkedinContact; // Optional, used for tracking connections
+    this.#linkedinContactId = linkedinContactId; // internal_id for linking
+
+    this.#instagramUsername = instagramUsername; // Optional, used for tracking connections
+    this.#instagramContactId = instagramContactId; // Optional, used for tracking connections
+    this.#instagramConnectionId = instagramConnectionId;
+
     this.#linkedinUrn = linkedinUrn;
     this.#addressBook = addressBook;
     this.#birthday = birthday;
     this.#photoBlurUrl = photoBlurUrl;
+    this.#notes = notes;
+    this.#others = others;
+    this.#hidden = hidden;
   }
 
   get name(): string {
@@ -96,6 +139,34 @@ export class Contact {
 
   get linkedinContact(): string | undefined {
     return this.#linkedinContact;
+  }
+
+  get linkedinContactId(): string | undefined {
+    return this.#linkedinContactId;
+  }
+
+  setLinkedinContact(linkedinContact?: LinkedinContact | null): void {
+    if (linkedinContact) {
+      this.#linkedinContact = linkedinContact.publicIdentifier;
+      this.#linkedinContactId = linkedinContact.internal_id; // fix: use internal_id
+      this.#linkedinUrn = linkedinContact.entityUrn;
+    } else {
+      this.#linkedinContact = undefined;
+      this.#linkedinContactId = undefined;
+      this.#linkedinUrn = undefined;
+    }
+  }
+
+  get instagramUsername(): string | undefined {
+    return this.#instagramUsername;
+  }
+
+  get instagramContactId(): string | undefined {
+    return this.#instagramContactId;
+  }
+
+  get instagramConnectionId(): string | undefined {
+    return this.#instagramConnectionId;
   }
 
   get addressBook(): AddressBook {
@@ -138,14 +209,16 @@ export class Contact {
     return this.#lastUpdated;
   }
 
-  setLinkedinContact(linkedinContact?: LinkedinContact | null): void {
-    if (linkedinContact) {
-      this.#linkedinContact = linkedinContact.publicIdentifier;
-      this.#linkedinUrn = linkedinContact.entityUrn;
-    } else {
-      this.#linkedinContact = undefined;
-      this.#linkedinUrn = undefined;
-    }
+  get notes(): string[] {
+    return this.#notes;
+  }
+
+  get hidden(): boolean {
+    return this.#hidden;
+  }
+
+  set hidden(hidden: boolean) {
+    this.#hidden = hidden;
   }
 
   toModel(): ContactModel {
@@ -162,9 +235,16 @@ export class Contact {
       role: this.#role,
       addressBook: this.#addressBook,
       linkedinContact: this.#linkedinContact,
+      linkedinContactId: this.#linkedinContactId,
       linkedinUrn: this.#linkedinUrn,
+      instagramUsername: this.#instagramUsername,
+      instagramContactId: this.#instagramContactId,
+      instagramConnectionId: this.#instagramConnectionId,
       photoBlurUrl: this.photoBlurUrl,
       birthday: this.#birthday,
+      notes: this.#notes,
+      others: this.#others,
+      hidden: this.#hidden,
     };
   }
 
@@ -360,6 +440,14 @@ export class Contact {
       ); // Format as YYYYMMDD
     }
 
+    if (this.#notes) {
+      vcard.set("note", this.#notes);
+    }
+
+    for (const other of this.#others) {
+      vcard.add(other.key, other.value, other.params);
+    }
+
     const url = new URL(`${this.id}.vcf`, this.#addressBook.url).toString();
 
     return {
@@ -380,6 +468,25 @@ export class Contact {
     contact: DAVVCard,
     addressBook: AddressBook
   ): Promise<Contact> {
+    const DEFINED_KEYS = [
+      "UID",
+      "FN",
+      "N",
+      "ORG",
+      "TITLE",
+      "ROLE",
+      "REV",
+      "ADR",
+      "EMAIL",
+      "TEL",
+      "PHOTO",
+      "X-SOCIALPROFILE",
+      "x-fm-online-other",
+      "URL",
+      "BDAY",
+      "NOTE",
+    ]
+
     const cards = VCard.parse(contact.data);
     if (cards.length === 0) {
       throw new Error("No valid vCard data found");
@@ -390,8 +497,18 @@ export class Contact {
     const card = cards[0];
 
     const addresses = card.has("adr") ? card.get("adr") : [];
-    const emails = card.has("email") ? card.get("email") : [];
-    const phones = card.has("tel") ? card.get("tel") : [];
+    
+    // Normalize emails from vCard
+    const emails = card.has("email") ? card.get("email").map(email => {
+      const normalizedValue = normalizeEmail(email.value);
+      return new VCardProperty(email.key, email.params, normalizedValue);
+    }) : [];
+    
+    // Normalize phone numbers from vCard
+    const phones = card.has("tel") ? card.get("tel").map(phone => {
+      const normalizedValue = normalizePhoneNumber(phone.value);
+      return new VCardProperty(phone.key, phone.params, normalizedValue);
+    }) : [];
 
     const photos = card.has("photo")
       ? await Promise.all(card.get("photo").map((photo) => getImageData(photo)))
@@ -460,16 +577,29 @@ export class Contact {
       role: card.has("ROLE") ? card.get("ROLE").value : undefined,
       addressBook: addressBook,
       linkedinContact: linkedinIndentifier,
+      linkedinContactId: undefined, // Not available in vCard
       birthday,
-    });
+      notes: card.has("NOTE") ? card.get("NOTE").map((note) => note.value) : [],
+      others: Array.from(card.records.entries().filter(([key]) => !DEFINED_KEYS.includes(key.toUpperCase())).flatMap(([,properties]) => properties))
+    })
   }
 
   static fromDatabaseObject(
     data: Tables<"carddav_contacts"> & {
-      linkedin_contacts: { public_identifier: string | null, entity_urn: string | null } | null;
+      linkedin_contacts: { internal_id: string; public_identifier: string | null; entity_urn: string | null } | null;
+      instagram_contacts: { internal_id: string; username: string | null } | null;
       carddav_addressbooks: Tables<"carddav_addressbooks">;
     }
   ): Contact {
+    const others: VCardProperty[] = []
+
+    if (data.other && Array.isArray(data.other)) {
+      for (const other of data.other) {
+        if (!other) continue;
+        others.push(VCardProperty.parse(other.toString()));
+      }
+    }
+
     return new Contact({
       name: data.name ?? "",
       addresses: data.addresses.map((adr) => VCardProperty.parse(adr)),
@@ -480,14 +610,22 @@ export class Contact {
       title: data.title ?? undefined,
       role: data.role ?? undefined,
       id: data.id_is_uppercase ? data.id.toUpperCase() : data.id,
-      // photo: contact. ?? undefined,
-      // photoUrl: contact. ?? undefined,
+
       linkedinContact: data.linkedin_contacts?.public_identifier ?? undefined,
+      linkedinContactId: data.linkedin_id ?? undefined,
       linkedinUrn: data.linkedin_contacts?.entity_urn ?? undefined,
+
+      instagramUsername: data.instagram_contacts?.username ?? undefined,
+      instagramContactId: data.instagram_id ?? undefined,
+      instagramConnectionId: undefined, // Remove if not in schema
+
       photoBlurUrl: data.photo_blur_url ?? undefined,
       lastUpdated: new Date(data.last_updated),
       addressBook: AddressBook.fromDatabaseObject(data.carddav_addressbooks),
       birthday: data.birth_date ? new Date(data.birth_date) : undefined,
+      notes: data.notes ? data.notes.filter((note) => note.trim() !== "") : [],
+      others,
+      hidden: data.hidden ?? false,
     });
   }
 
@@ -514,7 +652,8 @@ export class Contact {
       company: this.#company ?? null,
       title: this.#title ?? null,
       role: this.#role ?? null,
-      linkedin_contact: this.#linkedinUrn ?? null,
+      linkedin_id: this.#linkedinContactId ?? null,
+      instagram_id: this.#instagramContactId ?? null,
       last_updated:
         this.#lastUpdated?.toISOString() ?? new Date().toISOString(),
       photo_blur_url,
@@ -523,6 +662,9 @@ export class Contact {
       birth_date: this.#birthday
         ? this.#birthday.toISOString().split("T")[0] // Format as YYYY-MM-DD
         : null,
+      notes: this.#notes.length > 0 ? this.#notes : null,
+      other: this.#others.length > 0 ? this.#others.map((other) => other.stringify()) : null,
+      hidden: this.#hidden,
     };
   }
 
@@ -535,7 +677,7 @@ export class Contact {
     }
 
     const idx = this.#phones.findIndex(
-      (p) => p.value === normalizedPhoneNumber
+      (p) => normalizePhoneNumber(p.value) === normalizedPhoneNumber
     );
 
     if (idx < 0) {
@@ -562,15 +704,15 @@ export class Contact {
   }
 
   addEmail(types: string[], emailAddress: string): void {
-    if (!emailAddress) {
+    const normalizedEmail = normalizeEmail(emailAddress);
+
+    if (!normalizedEmail) {
       console.warn(`Invalid email address: ${emailAddress}`);
       return;
     }
 
-    emailAddress = emailAddress.toLowerCase().trim();
-
     const idx = this.#emails.findIndex(
-      (e) => e.value.toLowerCase() === emailAddress
+      (e) => normalizeEmail(e.value) === normalizedEmail
     );
 
     if (idx < 0) {
@@ -578,7 +720,7 @@ export class Contact {
         new VCardProperty(
           "EMAIL",
           { TYPE: types.map((type) => type.toLowerCase()) },
-          emailAddress
+          normalizedEmail
         )
       );
     } else {
@@ -589,7 +731,7 @@ export class Contact {
     }
 
     console.log(
-      `Added email address: ${emailAddress} with type ${types} to contact ${
+      `Added email address: ${normalizedEmail} with type ${types} to contact ${
         this.#name
       }`
     );
@@ -597,18 +739,46 @@ export class Contact {
 }
 
 function normalizePhoneNumber(phoneNumber: string): string {
-  // Implement your phone number normalization logic here
-
-  // If the number starts with +61 04, remove the 0
-  if (phoneNumber.startsWith("+61 04")) {
-    phoneNumber = phoneNumber.replace("+61 04", "+614");
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return '';
   }
 
-  // remove whitespace
-  phoneNumber = phoneNumber.replace(/\s+/g, "");
+  let normalized = phoneNumber.trim();
 
-  // remove any non-digit characters except for +
-  phoneNumber = phoneNumber.replace(/[^0-9+]/g, "");
+  // Remove all whitespace
+  normalized = normalized.replace(/\s+/g, '');
 
-  return phoneNumber;
+  // Handle Australian mobile numbers: +61 04xx -> +614xx
+  if (normalized.startsWith('+61 04')) {
+    normalized = normalized.replace('+61 04', '+614');
+  }
+
+  // Handle Australian mobile numbers: 04xx -> +614xx (if no country code)
+  if (normalized.startsWith('04') && !normalized.startsWith('+')) {
+    normalized = '+61' + normalized.substring(1);
+  }
+
+  // Handle Australian landline: 0x xxxx xxxx -> +61x xxxx xxxx
+  if (normalized.startsWith('0') && normalized.length === 10 && !normalized.startsWith('+')) {
+    normalized = '+61' + normalized.substring(1);
+  }
+
+  // Remove any non-digit characters except for +
+  normalized = normalized.replace(/[^0-9+]/g, '');
+
+  // Ensure it starts with + if it's an international number
+  if (normalized.length > 10 && !normalized.startsWith('+')) {
+    normalized = '+' + normalized;
+  }
+
+  return normalized;
+}
+
+function normalizeEmail(email: string): string {
+  if (!email || typeof email !== 'string') {
+    return '';
+  }
+
+  // Trim whitespace and convert to lowercase
+  return email.trim().toLowerCase();
 }

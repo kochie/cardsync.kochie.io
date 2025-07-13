@@ -1,9 +1,9 @@
-import { Element, LinkedInProfile } from "@/types/linkedin.types";
+import { Element, LinkedInProfileContactInfo } from "@/types/linkedin.types";
 import { createClient } from "../supabase/server";
 import { LinkedinContact } from "@/models/linkedinContact";
 
 export async function uploadConnections(
-  profiles: [Element, LinkedInProfile][],
+  profiles: [Element, LinkedInProfileContactInfo][],
   connectionId: string
 ): Promise<void> {
   const supabase = await createClient();

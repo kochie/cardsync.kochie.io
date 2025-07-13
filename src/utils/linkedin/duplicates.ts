@@ -5,11 +5,11 @@ import { LinkedinContact } from "@/models/linkedinContact";
 import { createClient } from "@/utils/supabase/server";
 import { getPlaiceholder } from "plaiceholder";
 
-export async function linkedinDetectDuplicates() {
+export async function linkedinDetectDuplicates(connectionId: string) {
   const supabase = await createClient();
   console.log("Detecting duplicates in CardDAV connections...");
 
-  const { data, error } = await supabase.rpc("match_linkedin_by_name");
+  const { data, error } = await supabase.rpc("match_linkedin_by_name", {connection_id: connectionId});
 
   if (error) {
     console.error("Error detecting duplicates:", error);

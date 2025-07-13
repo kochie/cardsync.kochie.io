@@ -16,17 +16,20 @@ export class VCardProperty {
   key: string;
   params: Record<string, string[]>;
   value: string;
+  group?: string
 
   constructor(
     key: string,
     params: Record<string, string[]> = {},
-    value: string
+    value: string,
+    group?: string
   ) {
     this.key = key.toUpperCase();
     this.params = Object.fromEntries(
       Object.entries(params).map(([k, v]) => [k.toUpperCase(), Array.from(new Set(v))])
     );
     this.value = value;
+    this.group = group
   }
 
   getParam(key: string): string | string[] | undefined {
@@ -72,13 +75,16 @@ export class VCardProperty {
 
   static parse(rawTextString: string) {
     const [keyWithParams, ...value] = rawTextString.split(":");
-    const [key, ...rest] = keyWithParams.split(";");
+    const [keyAndGroup, ...rest] = keyWithParams.split(";");
+    const keyParts = keyAndGroup.split(".");
+    const key = keyParts.length > 1 ? keyParts[1] : keyParts[0];
+    const group = keyParts.length > 1 ? keyParts[0] : undefined;
 
     const params: Record<string, string[]> = {};
     for (const param of rest) {
       const [paramKey, paramValue] = param.split("=");
       if (paramValue) {
-        const values = paramValue.split(","); // Handle multiple param values
+        const values = paramValue.toLowerCase().split(","); // Handle multiple param values
         params[paramKey.toLowerCase()] = [
           ...(params[paramKey.toLowerCase()] ?? []),
           ...values,
@@ -86,7 +92,7 @@ export class VCardProperty {
       }
     }
 
-    return new VCardProperty(key.toUpperCase(), params, value.join(":"));
+    return new VCardProperty(key.toUpperCase(), params, value.join(":"), group);
   }
 
   stringify(): string {
@@ -201,12 +207,22 @@ export class VCard {
     }
 
     let currentCard: VCardRecord | null = null;
+    let currentGroups: Record<string, VCardProperty[]> = {}
 
     for (const line of lines) {
       if (line.toUpperCase() === "BEGIN:VCARD") {
         currentCard = {};
+        currentGroups = {}
       } else if (line.toUpperCase() === "END:VCARD") {
         if (currentCard) {
+          const normalizedGroups = VCard.normalizeGroups(currentGroups);
+          for (const property of normalizedGroups) {
+            if (!currentCard[property.key]) {
+              currentCard[property.key] = [];
+            }
+            currentCard[property.key].push(property);
+          }
+
           cards.push(currentCard);
           currentCard = null;
         }
@@ -214,6 +230,14 @@ export class VCard {
         // Split key/params from value
 
         const property: VCardProperty = VCardProperty.parse(line);
+        if (property.group) {
+          if (!currentGroups[property.group]) {
+            currentGroups[property.group] = [];
+          }
+          currentGroups[property.group].push(property);
+          continue;
+        }
+
         if (!Object.hasOwn(currentCard, property.key))
           currentCard[property.key] = [];
         currentCard[property.key].push(property);
@@ -249,5 +273,32 @@ export class VCard {
 
     result += "END:VCARD\r\n";
     return result;
+  }
+
+  static normalizeGroups(
+    groups: Record<string, VCardProperty[]>
+  ): VCardProperty[] {
+    // These are values of vCard properties that are not in the vcard standard but are used by Apple Contacts
+    // We will apply these as attributes to the normalized properties
+    const attributes = [
+      "X-ABLabel"
+    ].map(attr => attr.toUpperCase());
+    const normalized: VCardProperty[] = [];
+
+    Object.entries(groups).forEach(([, properties]) => {
+      // The properties will contain either real values 
+      const normalizedProperties = properties.filter(p => !attributes.includes(p.key.toUpperCase()))
+      const groupAttributes = properties.filter(p => attributes.includes(p.key.toUpperCase()));
+
+      for (const property of normalizedProperties) {
+        for (const attr of groupAttributes) {
+          property.appendParam(attr.key, attr.value);
+        }
+      }
+
+      normalized.push(...normalizedProperties)
+    })
+
+    return normalized;
   }
 }

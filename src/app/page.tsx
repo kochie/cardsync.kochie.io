@@ -1,27 +1,44 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, CheckCircle, Facebook, Instagram, Linkedin, MessageCircle, Slack, Users } from "lucide-react"
+import { createClient } from "@/utils/supabase/server";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowRight, faUsers } from "@fortawesome/pro-solid-svg-icons";
+import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
+import { faDiscord, faFacebook, faInstagram, faLinkedin, faSlack } from "@fortawesome/free-brands-svg-icons";
 
-export default function Home() {
+import LandingPageIllustration from "@/assets/landing_page.svg"
+
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-white to-blue-50">
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container flex h-16 items-center">
+        <div className="container mx-auto px-4 flex h-16 items-center">
           <Link
             href="/"
             className="flex items-center gap-2 font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600"
           >
-            <Users className="h-6 w-6 text-purple-600" />
+            <FontAwesomeIcon icon={faUsers} className="h-6 w-6 text-purple-600" />
             <span className="text-xl">ContactSync</span>
           </Link>
           <nav className="ml-auto flex gap-4 sm:gap-6">
-            <Link href="/auth/login" className="text-sm font-medium hover:text-purple-600 transition-colors">
-              Login
-            </Link>
-            <Link href="/auth/signup" className="text-sm font-medium hover:text-purple-600 transition-colors">
-              Sign up
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button className="cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold shadow hover:from-purple-700 hover:to-pink-700 transition-all">Go to Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/login" className="text-sm font-medium hover:text-purple-600 transition-colors">
+                  Login
+                </Link>
+                <Link href="/auth/signup" className="text-sm font-medium hover:text-purple-600 transition-colors">
+                  Sign up
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -35,7 +52,7 @@ export default function Home() {
             <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
           </div>
 
-          <div className="container px-4 md:px-6 relative z-10">
+          <div className="container mx-auto px-4 md:px-6 relative z-10">
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
@@ -50,15 +67,15 @@ export default function Home() {
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Link href="/signup">
                     <Button
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
+                      className="cursor-pointer flex items-center bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
                     >
                       Get Started
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      <FontAwesomeIcon icon={faArrowRight} className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="/features">
                     <Button
-                      className="border-purple-200 hover:bg-purple-50 transition-all duration-200"
+                      className="cursor-pointer border-purple-200 hover:bg-purple-50 transition-all duration-200"
                     >
                       Learn More
                     </Button>
@@ -66,15 +83,15 @@ export default function Home() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-sm mt-4">
                   <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                     <FontAwesomeIcon icon={faCheckCircle} className="h-4 w-4 text-green-500" />
                     <span>Automatic Sync</span>
                   </div>
                   <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <FontAwesomeIcon icon={faCheckCircle} className="h-4 w-4 text-green-500" />
                     <span>Duplicate Detection</span>
                   </div>
                   <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <FontAwesomeIcon icon={faCheckCircle} className="h-4 w-4 text-green-500" />
                     <span>CardDAV Support</span>
                   </div>
                 </div>
@@ -82,7 +99,7 @@ export default function Home() {
               <div className="mx-auto flex items-center justify-center lg:justify-end">
                 <div className="relative w-full max-w-[450px] aspect-square">
                   <Image
-                    src="/placeholder.svg?height=500&width=500"
+                    src={LandingPageIllustration}
                     alt="Contact Sync Illustration"
                     width={500}
                     height={500}
@@ -96,7 +113,7 @@ export default function Home() {
 
         {/* Platforms Section */}
         <section className="w-full py-12 md:py-24 bg-white">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold tracking-tight mb-2">Connect All Your Platforms</h2>
               <p className="text-gray-600 max-w-[700px] mx-auto">
@@ -107,35 +124,35 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
               <div className="flex flex-col items-center p-4 bg-blue-50 rounded-xl hover:shadow-md transition-all duration-200 hover:-translate-y-1">
                 <div className="w-16 h-16 flex items-center justify-center bg-blue-100 rounded-full mb-3">
-                  <Linkedin className="h-8 w-8 text-blue-600" />
+                  <FontAwesomeIcon icon={faLinkedin} className="h-8 w-8 text-blue-600" />
                 </div>
                 <h3 className="font-medium text-center">LinkedIn</h3>
               </div>
 
               <div className="flex flex-col items-center p-4 bg-blue-50 rounded-xl hover:shadow-md transition-all duration-200 hover:-translate-y-1">
                 <div className="w-16 h-16 flex items-center justify-center bg-blue-100 rounded-full mb-3">
-                  <Facebook className="h-8 w-8 text-blue-600" />
+                  <FontAwesomeIcon icon={faFacebook} className="h-8 w-8 text-blue-600" />
                 </div>
                 <h3 className="font-medium text-center">Facebook</h3>
               </div>
 
               <div className="flex flex-col items-center p-4 bg-pink-50 rounded-xl hover:shadow-md transition-all duration-200 hover:-translate-y-1">
                 <div className="w-16 h-16 flex items-center justify-center bg-pink-100 rounded-full mb-3">
-                  <Instagram className="h-8 w-8 text-pink-600" />
+                  <FontAwesomeIcon icon={faInstagram} className="h-8 w-8 text-pink-600" />
                 </div>
                 <h3 className="font-medium text-center">Instagram</h3>
               </div>
 
               <div className="flex flex-col items-center p-4 bg-purple-50 rounded-xl hover:shadow-md transition-all duration-200 hover:-translate-y-1">
                 <div className="w-16 h-16 flex items-center justify-center bg-purple-100 rounded-full mb-3">
-                  <Slack className="h-8 w-8 text-purple-600" />
+                  <FontAwesomeIcon icon={faSlack} className="h-8 w-8 text-purple-600" />
                 </div>
                 <h3 className="font-medium text-center">Slack</h3>
               </div>
 
               <div className="flex flex-col items-center p-4 bg-indigo-50 rounded-xl hover:shadow-md transition-all duration-200 hover:-translate-y-1">
                 <div className="w-16 h-16 flex items-center justify-center bg-indigo-100 rounded-full mb-3">
-                  <MessageCircle className="h-8 w-8 text-indigo-600" />
+                  <FontAwesomeIcon icon={faDiscord} className="h-8 w-8 text-indigo-600" />
                 </div>
                 <h3 className="font-medium text-center">Discord</h3>
               </div>
@@ -145,7 +162,7 @@ export default function Home() {
 
         {/* Features Section */}
         <section className="w-full py-12 md:py-24 bg-gradient-to-b from-purple-50 to-white">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold tracking-tight mb-2">Smart Features</h2>
               <p className="text-gray-600 max-w-[700px] mx-auto">
@@ -157,7 +174,7 @@ export default function Home() {
               <div className="bg-white/80 backdrop-blur-sm border border-purple-100 rounded-xl hover:shadow-lg transition-all duration-200 hover:-translate-y-1 p-6 flex flex-col">
                 <div className="pb-2">
                   <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-2">
-                    <Users className="h-6 w-6 text-purple-600" />
+                    <FontAwesomeIcon icon={faUsers} className="h-6 w-6 text-purple-600" />
                   </div>
                   <div className="text-xl font-semibold mb-1">Smart Merging</div>
                   <div className="text-gray-500 mb-2">Intelligent duplicate detection</div>
@@ -174,7 +191,7 @@ export default function Home() {
                     className="text-purple-600 hover:text-purple-700 font-medium flex items-center"
                   >
                     Learn more
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                    <FontAwesomeIcon icon={faArrowRight} className="ml-1 h-4 w-4" />
                   </Link>
                 </div>
               </div>
@@ -213,7 +230,7 @@ export default function Home() {
                     className="text-pink-600 hover:text-pink-700 font-medium flex items-center"
                   >
                     Learn more
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                    <FontAwesomeIcon icon={faArrowRight} className="ml-1 h-4 w-4" />
                   </Link>
                 </div>
               </div>
@@ -252,7 +269,7 @@ export default function Home() {
                     className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
                   >
                     Learn more
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                    <FontAwesomeIcon icon={faArrowRight} className="ml-1 h-4 w-4" />
                   </Link>
                 </div>
               </div>
@@ -262,7 +279,7 @@ export default function Home() {
 
         {/* Testimonials */}
         <section className="w-full py-12 md:py-24 bg-white">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold tracking-tight mb-2">What Our Users Say</h2>
               <p className="text-gray-600 max-w-[700px] mx-auto">
@@ -375,7 +392,7 @@ export default function Home() {
 
         {/* CTA Section */}
         <section className="w-full py-12 md:py-24 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-          <div className="container px-4 md:px-6 text-center">
+          <div className="container mx-auto px-4 md:px-6 text-center">
             <h2 className="text-3xl font-bold tracking-tight mb-4">Ready to Simplify Your Contact Management?</h2>
             <p className="max-w-[600px] mx-auto mb-8 opacity-90">
               Join thousands of users who have streamlined their contact management with ContactSync.
@@ -386,7 +403,7 @@ export default function Home() {
                   className="bg-white text-purple-600 hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-1"
                 >
                   Get Started for Free
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <FontAwesomeIcon icon={faArrowRight} className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/demo">
@@ -403,11 +420,11 @@ export default function Home() {
       </main>
 
       <footer className="w-full py-6 bg-gray-900 text-gray-300">
-        <div className="container px-4 md:px-6">
+        <div className="container mx-auto px-4 md:px-6">
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="flex items-center gap-2 font-bold text-white mb-4">
-                <Users className="h-5 w-5 text-purple-400" />
+                <FontAwesomeIcon icon={faUsers} className="h-5 w-5 text-purple-400" />
                 <span>ContactSync</span>
               </div>
               <p className="text-sm text-gray-400 mb-4">
