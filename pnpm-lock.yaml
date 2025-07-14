@@ -170,6 +170,9 @@ importers:
       react-modal:
         specifier: ^3.16.3
         version: 3.16.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      sharp:
+        specifier: ^0.34.3
+        version: 0.34.3
       snakecase-keys:
         specifier: ^8.0.1
         version: 8.1.0
