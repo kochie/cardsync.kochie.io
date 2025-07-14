@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { uploadImageToSupabase } from "@/utils/storage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
-import { faDownload, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -13,9 +13,7 @@ import { useRouter } from "next/navigation";
 interface SocialMediaPhotosProps {
   contactId: string;
   linkedinContactId?: string; // internal_id
-  linkedinContactMoniker?: string; // public_identifier for display
   instagramContactId?: string; // internal_id
-  instagramUsername?: string; // for display
   onPhotoApplied?: () => void;
 }
 
@@ -30,22 +28,15 @@ interface PhotoOption {
 export default function SocialMediaPhotos({
   contactId,
   linkedinContactId,
-  linkedinContactMoniker,
   instagramContactId,
-  instagramUsername,
   onPhotoApplied,
 }: SocialMediaPhotosProps) {
   const [photos, setPhotos] = useState<PhotoOption[]>([]);
-  const [loading, setLoading] = useState(false);
   const [applyingPhoto, setApplyingPhoto] = useState<string | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
-  useEffect(() => {
-    fetchSocialMediaPhotos();
-  }, [linkedinContactId, instagramContactId]);
-
-  const fetchSocialMediaPhotos = async () => {
+  const fetchSocialMediaPhotos = useCallback(async () => {
     const photoOptions: PhotoOption[] = [];
 
     // Fetch LinkedIn photo if contact has LinkedIn connection
@@ -95,7 +86,11 @@ export default function SocialMediaPhotos({
     }
 
     setPhotos(photoOptions);
-  };
+  }, [instagramContactId, linkedinContactId, supabase]);
+
+  useEffect(() => {
+    fetchSocialMediaPhotos();
+  }, [fetchSocialMediaPhotos]);
 
   const applyPhoto = async (photo: PhotoOption) => {
     if (!photo.url) return;
@@ -129,6 +124,8 @@ export default function SocialMediaPhotos({
           body: JSON.stringify({ contactId, imageBase64: base64 })
         });
         if (resp.ok) {
+          // TODO: Handle the response if needed
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const data = await resp.json();
           // Optionally trigger UI update
           onPhotoApplied?.();

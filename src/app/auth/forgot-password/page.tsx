@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, CheckCircle, Loader2, Users } from "lucide-react"
-import { Label } from "@/components/ui/fieldset"
+import { Field, Label } from "@/components/ui/fieldset"
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -82,6 +82,7 @@ export default function ForgotPasswordPage() {
 
                   <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                     <div className="space-y-2">
+                      <Field>
                       <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
@@ -92,6 +93,7 @@ export default function ForgotPasswordPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         className="h-11"
                       />
+                      </Field>
                     </div>
                     <Button
                       type="submit"

@@ -122,14 +122,14 @@ export default function ContactsTable({
         size="1x"
         className="text-gray-500"
       />
-      {contact.linkedinContact && (
+      {contact.linkedinUser && (
         <FontAwesomeIcon
           icon={faLinkedin}
           size="1x"
           className="text-blue-700"
         />
       )}
-      {contact.instagramUsername && (
+      {contact.instagramUser && (
         <FontAwesomeIcon
           icon={faInstagram}
           size="1x"

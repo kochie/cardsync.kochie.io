@@ -62,8 +62,9 @@ export default function EditableAddress({
 
   const removeType = (type: string) => {
     const newTypes = types.filter((t) => t !== type);
-    const newParams = { ...address.params, TYPE: newTypes };
-    if (newTypes.length === 0) delete (newParams as any).TYPE;
+    const newParams: {[key: string]: string[] } = { ...address.params, TYPE: newTypes };
+    if (newTypes.length === 0) delete newParams.TYPE;
+
     onUpdate(new VCardProperty(address.key, newParams, address.value, address.group));
   };
 

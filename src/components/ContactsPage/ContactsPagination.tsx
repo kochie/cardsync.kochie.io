@@ -15,7 +15,6 @@ interface ContactsPaginationProps {
 
 export default function ContactsPagination({
   currentPage,
-  isLastPage,
   previousPage,
   nextPage,
 }: ContactsPaginationProps) {

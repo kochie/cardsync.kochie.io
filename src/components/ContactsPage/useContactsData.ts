@@ -66,8 +66,8 @@ export function useContactsData(): UseContactsDataReturn {
           .select(
             `
             *, 
-            linkedin_contacts(internal_id, public_identifier, entity_urn),           
-            instagram_contacts(internal_id, username, full_name),
+            linkedin_contacts(*),           
+            instagram_contacts(*),
             carddav_addressbooks (
               *,
               carddav_connections (

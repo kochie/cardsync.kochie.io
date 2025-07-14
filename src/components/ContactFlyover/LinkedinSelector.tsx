@@ -1,6 +1,6 @@
 "use client";
 
-import { LinkedinContact } from "@/models/linkedinContact";
+import { LinkedinContact, LinkedinContactModel } from "@/models/linkedinContact";
 import { Field, Label } from "../ui/fieldset";
 import { Combobox, ComboboxDescription, ComboboxLabel, ComboboxOption } from "../ui/combobox";
 import Image from "next/image";
@@ -14,7 +14,7 @@ export default function LinkedinSelector({
 }: {
   defaultValue?: LinkedinContact;
   selectedContact?: string;
-  onSelect: (contact: LinkedinContact | null) => void;
+  onSelect: (contact: LinkedinContactModel | null) => void;
 }) {
   const supabase = createClient();
 
@@ -67,7 +67,7 @@ export default function LinkedinSelector({
         onChange={(person) => {
           // setSearchTerm("");
           setSelectedContact(person);
-          onSelect(person);
+          onSelect(person?.toModel() ?? null);
         }}
         onQueryChange={(query) => setSearchTerm(query)}
         placeholder="Search LinkedIn contacts"

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
-import { faPlus, faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 
 interface SocialMediaEnrichmentProps {
@@ -43,24 +43,17 @@ interface SocialMediaData {
 }
 
 export default function SocialMediaEnrichment({
-  contactId,
   linkedinContactId,
-  linkedinContactMoniker,
   instagramContactId,
-  instagramUsername,
   currentData,
   onDataEnriched,
 }: SocialMediaEnrichmentProps) {
   const [socialMediaData, setSocialMediaData] = useState<SocialMediaData[]>([]);
-  const [loading, setLoading] = useState(false);
   const [applyingData, setApplyingData] = useState<string | null>(null);
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchSocialMediaData();
-  }, [linkedinContactId, instagramContactId]);
 
-  const fetchSocialMediaData = async () => {
+  const fetchSocialMediaData = useCallback(async () => {
     const data: SocialMediaData[] = [];
 
     // Fetch LinkedIn data if contact has LinkedIn connection
@@ -81,7 +74,7 @@ export default function SocialMediaEnrichment({
               title: linkedinData.headline ?? undefined,
               email: linkedinData.email_address?.[0] ?? undefined,
               phone: Array.isArray(linkedinData.phone_numbers) && linkedinData.phone_numbers.length > 0 
-                ? (linkedinData.phone_numbers[0] as any)?.number ?? undefined
+                ? (linkedinData.phone_numbers[0] as {number: string})?.number ?? undefined
                 : undefined,
               profilePicture: linkedinData.profile_picture ?? undefined,
             },
@@ -117,7 +110,11 @@ export default function SocialMediaEnrichment({
     }
 
     setSocialMediaData(data);
-  };
+  }, [linkedinContactId, instagramContactId, supabase]);
+
+  useEffect(() => {
+    fetchSocialMediaData();
+  }, [fetchSocialMediaData]);
 
   const applyData = async (sourceData: SocialMediaData, field: keyof SocialMediaData['data']) => {
     setApplyingData(`${sourceData.source}-${field}`);
@@ -126,7 +123,13 @@ export default function SocialMediaEnrichment({
       const value = sourceData.data[field];
       if (!value) return;
 
-      const updates: any = {};
+      const updates: {
+        name?: string;
+        title?: string;
+        company?: string;
+        emails?: string[];
+        phones?: string[];
+      } = {};
       
       switch (field) {
         case 'name':

@@ -53,23 +53,6 @@ export interface InstagramFollower {
   profile_pic_url: string;
   is_private: boolean;
   is_verified: boolean;
-  followed_by_viewer: boolean;
-  follows_viewer: boolean;
-  requested_by_viewer: boolean;
-  edge_followed_by: {
-    count: number;
-  };
-  edge_follow: {
-    count: number;
-  };
-  edge_mutual_followed_by: {
-    count: number;
-    edges: Array<{
-      node: {
-        username: string;
-      };
-    }>;
-  };
 }
 
 export interface InstagramFollowing {
@@ -130,10 +113,4 @@ export interface InstagramContactModel {
   profilePicture?: string;
   isPrivate: boolean;
   isVerified: boolean;
-  followerCount: number;
-  followingCount: number;
-  mutualFollowers: string[];
-  followedByViewer: boolean;
-  followsViewer: boolean;
-  requestedByViewer: boolean;
 } 

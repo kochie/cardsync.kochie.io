@@ -7,12 +7,16 @@ import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUsers } from "@fortawesome/free-solid-svg-icons";
+import { Group } from "@/models/groups";
 
-interface Group {
+// Temporary interface for the "create" option
+interface CreateGroupOption {
   id: string;
   name: string;
-  memberCount?: number;
+  memberCount: number;
 }
+
+type GroupOption = Group | CreateGroupOption;
 
 interface GroupSelectorProps {
   addressBookId: string;
@@ -30,7 +34,7 @@ export default function GroupSelector({
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [options, setOptions] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState<Group | null>(null);
+  const [value, setValue] = useState<GroupOption | null>(null);
 
   useEffect(() => {
     if (!debouncedSearchTerm) {
@@ -40,7 +44,7 @@ export default function GroupSelector({
     setLoading(true);
     supabase
       .from("carddav_groups")
-      .select("id, name")
+      .select("*, carddav_contacts(carddav_addressbooks(*))")
       .ilike("name", `%${debouncedSearchTerm}%`)
       .eq("address_book", addressBookId)
       .limit(10)
@@ -54,56 +58,81 @@ export default function GroupSelector({
         // Get member counts for each group
         const groupsWithCounts = await Promise.all(
           (data ?? []).map(async (g) => {
-            const { count } = await supabase
+            const { data: members, error } = await supabase
               .from("carddav_group_members")
-              .select("member_id", { count: "exact", head: true })
+              .select("member_id")
               .eq("group_id", g.id);
             
-            return {
-              id: String(g.id),
-              name: String(g.name ?? ""),
-              memberCount: count || 0
-            };
+            if (error) {
+              console.error("Error fetching group members:", error);
+              return Group.fromDatabaseObject(g, g.carddav_contacts[0].carddav_addressbooks, []);
+            }
+            
+            return Group.fromDatabaseObject(g, g.carddav_contacts[0].carddav_addressbooks, members?.map(m => m.member_id) || []);
           })
         );
         
-        setOptions(groupsWithCounts.filter((g) => g.name.length > 0));
+        setOptions(groupsWithCounts);
       });
   }, [debouncedSearchTerm, addressBookId, supabase]);
 
-  const handleAdd = async (group: { id?: string; name: string; memberCount?: number }) => {
+  const handleAdd = async (group: GroupOption) => {
     // Prevent adding if already in group
     if (existingGroups.some((g) => g.name.toLowerCase() === group.name.toLowerCase())) {
       setSearchTerm("");
       setValue(null);
       return;
     }
-    let groupObj = group;
-    if (!group.id) {
-      // Create new group
+
+    // If it's a "create" option, create a new group
+    if (group.id === "create") {
       const { data, error } = await supabase
         .from("carddav_groups")
         .insert({
-          name: group.name.trim(),
+          name: debouncedSearchTerm.trim(),
           address_book: addressBookId,
           id_is_uppercase: false,
           readonly: false,
         })
         .select()
         .single();
+      
       if (error || !data) {
         toast.error("Failed to create group");
         return;
       }
-      groupObj = { id: data.id, name: data.name ?? "", memberCount: 0 };
+
+      // Fetch the address book data to create a proper Group object
+      const { data: addressBookData, error: addressBookError } = await supabase
+        .from("carddav_addressbooks")
+        .select("*")
+        .eq("id", addressBookId)
+        .single();
+
+      if (addressBookError || !addressBookData) {
+        toast.error("Failed to fetch address book data");
+        return;
+      }
+
+      // Create a proper Group object for the new group
+      const newGroup = Group.fromDatabaseObject(
+        data,
+        addressBookData,
+        []
+      );
+
+      onAdd(newGroup);
+    } else {
+      // It's an existing group
+      onAdd(group as Group);
     }
-    onAdd({ id: groupObj.id!, name: groupObj.name, memberCount: groupObj.memberCount || 0 });
+    
     setSearchTerm("");
     setValue(null);
   };
 
   // Compose options: existing + create option if needed
-  let comboOptions = options;
+  let comboOptions: GroupOption[] = options;
   if (
     debouncedSearchTerm &&
     !loading &&
@@ -122,9 +151,7 @@ export default function GroupSelector({
       displayValue={(g) => g?.name.replace(/^Create group: /, "") || ""}
       value={value}
       onChange={(g) => {
-        if (g?.id === "create") {
-          handleAdd({ name: debouncedSearchTerm });
-        } else if (g) {
+        if (g) {
           setValue(g);
           handleAdd(g);
         }

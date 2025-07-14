@@ -30,10 +30,9 @@ async function syncLinkedinConnection(connectionId: string, supabase: SupabaseCl
     console.log(`Syncing LinkedIn connections for ${connection.name}...`);
     
     let profileCount = 0;
-    const profiles = getLinkedinConnections(connection);
     
     // Process each profile as it's yielded and upload to database
-    for await (const profile of profiles) {
+    for await (const profile of getLinkedinConnections(connection)) {
       await uploadConnections([profile], connection.id);
       profileCount++;
       

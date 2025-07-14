@@ -9,7 +9,7 @@ export async function linkedinDetectDuplicates(connectionId: string) {
   const supabase = await createClient();
   console.log("Detecting duplicates in CardDAV connections...");
 
-  const { data, error } = await supabase.rpc("match_linkedin_by_name", {connection_id: connectionId});
+  const { data, error } = await supabase.rpc("match_linkedin_by_name", {p_connection_id: connectionId});
 
   if (error) {
     console.error("Error detecting duplicates:", error);
@@ -46,6 +46,7 @@ export async function copyLinkedinDetails(
       `
       *,
       linkedin_contacts (*),
+      instagram_contacts (*),
       carddav_addressbooks (*)
     `
     )
@@ -67,13 +68,13 @@ export async function copyLinkedinDetails(
   const linkedinProfile = LinkedinContact.fromDatabaseObject(
     data.linkedin_contacts
   );
-  const contact = await Contact.fromDatabaseObject(data);
+  const contact = Contact.fromDatabaseObject(data);
 
   for (const phone of linkedinProfile.phoneNumbers) {
     contact.addPhone([phone.type], phone.number);
   }
 
-  for (const email of linkedinProfile.emailAddresses) {
+  for (const email of linkedinProfile.emailAddresses ?? []) {
     const emailType = email.type || "work"; // Default to 'work' if type is not specified
     contact.addEmail([emailType], email.emailAddress);
   }

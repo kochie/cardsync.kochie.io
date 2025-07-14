@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { Contact } from "@/models/contacts";
 import { revalidatePath } from "next/cache";
 
 export async function createContact(userId: string, addressBookId: string) {

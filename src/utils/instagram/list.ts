@@ -6,6 +6,30 @@ function randomDelay(min: number, max: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, delay));
 }
 
+interface InstagramFollowersResponse {
+  users: {
+    pk: string;
+    username: string;
+    full_name?: string;
+    profile_pic_url: string;
+    is_private: boolean;
+    is_verified: boolean;
+  }[]
+  next_max_id?: string | null;
+}
+
+interface InstagramFollowingResponse {
+  users: {
+    pk: string;
+    username: string;
+    full_name?: string;
+    profile_pic_url: string;
+    is_private: boolean;
+    is_verified: boolean;
+  }[]
+  next_max_id?: string | null;
+}
+
 export async function getInstagramFollowers(connection: InstagramConnectionModel): Promise<InstagramFollower[]> {
   const followers: InstagramFollower[] = [];
   let next_max_id: string | null = null;
@@ -48,14 +72,14 @@ export async function getInstagramFollowers(connection: InstagramConnectionModel
         throw new Error(`Instagram API error: ${response.status} ${response.statusText}`);
       }
 
-      const data: any = await response.json();
+      const data: InstagramFollowersResponse = await response.json();
 
       if (!data.users) {
         throw new Error("Instagram API did not return a users array. Check authentication and userId.");
       }
 
       // Convert API response to InstagramFollower format
-      const convertedFollowers: InstagramFollower[] = data.users.map((user: any) => ({
+      const convertedFollowers: InstagramFollower[] = data.users.map((user) => ({
         id: user.pk,
         username: user.username,
         full_name: user.full_name || user.username,
@@ -128,13 +152,13 @@ export async function getInstagramFollowing(connection: InstagramConnectionModel
         throw new Error(`Instagram API error: ${response.status} ${response.statusText}`);
       }
 
-      const data: any = await response.json();
+      const data: InstagramFollowingResponse = await response.json();
 
       if (!data.users) {
         throw new Error("Instagram API did not return a users array. Check authentication and userId.");
       }
 
-      const convertedFollowing: InstagramFollower[] = data.users.map((user: any) => ({
+      const convertedFollowing: InstagramFollower[] = data.users.map((user) => ({
         id: user.pk,
         username: user.username,
         full_name: user.full_name || user.username,

@@ -15,6 +15,7 @@ import { copyLinkedinDetails } from "@/utils/linkedin/duplicates";
 import EditingView from "./EditingView";
 import ReadView from "./ReadView";
 import clsx from "clsx";
+import { Group } from "@/models/groups";
 
 
 type ContactFlyoverProps = {
@@ -29,10 +30,6 @@ export default function ContactFlyover({
   initialEditMode = false,
 }: ContactFlyoverProps) {
   const [isEditing, setIsEditing] = useState(initialEditMode);
-
-  const [selectedLinkedin, setSelectedLinkedin] = useState<
-    LinkedinContact | undefined
-  >(undefined);
 
   const supabase = createClient();
 
@@ -50,28 +47,6 @@ export default function ContactFlyover({
     setIsEditing(false);
     onClose();
   };
-
-  useEffect(() => {
-    if (!contact?.linkedinContact) return;
-    supabase
-      .from("linkedin_contacts")
-      .select()
-      .eq("public_identifier", contact.linkedinContact)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Error fetching LinkedIn contact:", error);
-          return;
-        }
-
-        if (data) {
-          setSelectedLinkedin(LinkedinContact.fromDatabaseObject(data));
-        } else {
-          setSelectedLinkedin(undefined);
-        }
-      });
-  }, [supabase, contact]);
-
 
   async function pushToCardDavServer() {
     if (contact) await cardDavSyncPush(contact.addressBook.id, [contact.id]);
@@ -92,12 +67,14 @@ export default function ContactFlyover({
   const { user } = useUser();
 
   // Fetch groups for the contact
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   useEffect(() => {
     if (!contact) return;
     supabase
       .from("carddav_group_members")
-      .select(`group_id, carddav_groups (id, name, description, address_book)`)
+      .select(`group_id, carddav_groups (*), carddav_contacts (
+        carddav_addressbooks (*)
+      )`)
       .eq("member_id", contact.id)
       .then(({ data, error }) => {
         if (error) {
@@ -105,7 +82,7 @@ export default function ContactFlyover({
           setGroups([]);
           return;
         }
-        setGroups((data ?? []).map((gm: any) => gm.carddav_groups).filter(Boolean));
+        setGroups((data ?? []).map((gm) => Group.fromDatabaseObject(gm.carddav_groups, gm.carddav_contacts.carddav_addressbooks, [])));
       });
   }, [contact, supabase]);
 
@@ -161,7 +138,7 @@ export default function ContactFlyover({
             <EditingView
               contact={contact}
               saveContact={saveContact}
-              selectedLinkedin={selectedLinkedin}
+              selectedLinkedin={contact.linkedinUser ? new LinkedinContact(contact.linkedinUser) : undefined}
             />
           ) : (
             <ReadView contact={contact} groups={groups} />

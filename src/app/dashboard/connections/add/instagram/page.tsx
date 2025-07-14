@@ -39,6 +39,7 @@ export default function InstagramConnectionPage() {
         setUsername("");
       }
     } catch (error) {
+      console.error("Error connecting Instagram:", error);
       setMessage({ type: 'error', text: 'An unexpected error occurred' });
     } finally {
       setIsSubmitting(false);
@@ -57,6 +58,7 @@ export default function InstagramConnectionPage() {
         setMessage({ type: 'success', text: result.success });
       }
     } catch (error) {
+      console.error("Error testing Instagram connection:", error);
       setMessage({ type: 'error', text: 'An unexpected error occurred while testing' });
     } finally {
       setIsTesting(false);

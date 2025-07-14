@@ -73,7 +73,7 @@ export function ConnectionTableRow({
   };
   onDelete?: (id: string, provider: string) => void;
 }) {
-  const [pending, setPending] = useState(false);
+  const [, setPending] = useState(false);
 
   const handleSync = async () => {
     setPending(true);

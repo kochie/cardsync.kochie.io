@@ -176,11 +176,7 @@ export interface LinkedInProfileContactInfo {
 }
 
 export interface LinkedInWebsite {
-  type: {
-    "com.linkedin.voyager.identity.profile.StandardWebsite": {
-      category: string; // e.g. "PERSONAL", "BLOG", etc.
-    };
-  };
+  type: string;
   url: string;
 }
 

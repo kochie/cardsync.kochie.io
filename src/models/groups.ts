@@ -22,17 +22,17 @@ const readonlyGroups = ["vips"];
 
 export class Group {
   readonly #id: string;
-  #name?: string;
+  #name: string;
   #description?: string;
   readonly #createdAt: Date;
   #updatedAt: Date;
   readonly #addressBook: AddressBook;
   readonly #readonly: boolean = false; // Default to false, can be set later
-  #members: string[]; // Array of member IDs, can be fetched dynamically
+  #members: string[];
 
   constructor(data: GroupModel) {
     this.#id = data.id || crypto.randomUUID();
-    this.#name = data.name;
+    this.#name = data.name ?? ""
     this.#description = data.description;
     this.#createdAt = data.createdAt || new Date();
     this.#updatedAt = data.updatedAt || new Date();
@@ -50,6 +50,10 @@ export class Group {
     return this.#members;
   }
 
+  get memberCount(): number {
+    return this.#members.length;
+  }
+
   get readonly(): boolean {
     return this.#readonly;
   }
@@ -58,7 +62,7 @@ export class Group {
     return this.#id;
   }
 
-  get name(): string | undefined {
+  get name(): string {
     return this.#name;
   }
 
@@ -119,6 +123,7 @@ export class Group {
         carddav_contacts (
             *,
             linkedin_contacts (*),
+            instagram_contacts (*),
             carddav_addressbooks (*)
         )
         `

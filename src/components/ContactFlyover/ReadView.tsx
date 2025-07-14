@@ -29,6 +29,7 @@ import toast from "react-hot-toast";
 import Section from "../ui/section";
 import GroupCard from "./GroupCard";
 import { formatPhoneNumber, getCountryFlag, getCountryFromPhoneNumber } from "@/utils/phone/format";
+import { Group } from "@/models/groups";
 
 function CopyButton({ value, label }: { value: string; label: string }) {
   return (
@@ -49,7 +50,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-export default function ReadView({ contact, groups }: { contact: Contact, groups?: { id: string, name: string, description?: string, address_book?: string }[] }) {
+export default function ReadView({ contact, groups }: { contact: Contact, groups?: Group[] }) {
   const { user } = useUser();
   const [companyName, companyDept] = (contact.company || "").split(";");
 
@@ -198,14 +199,14 @@ export default function ReadView({ contact, groups }: { contact: Contact, groups
           {/* LinkedIn */}
           <div className="flex items-center">
             <FontAwesomeIcon icon={faLinkedin} className="mr-1 text-blue-600" />
-            {contact.linkedinContact ? (
+            {contact.linkedinUser ? (
               <a
-                href={`https://www.linkedin.com/in/${contact.linkedinContact}`}
+                href={`https://www.linkedin.com/in/${contact.linkedinUser.publicIdentifier}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-base text-blue-600 hover:underline flex items-center"
               >
-                {contact.linkedinContact}
+                {contact.linkedinUser.publicIdentifier}
                 <FontAwesomeIcon
                   icon={faExternalLinkAlt}
                   className="ml-1 text-xs"
@@ -218,14 +219,14 @@ export default function ReadView({ contact, groups }: { contact: Contact, groups
           {/* Instagram */}
           <div className="flex items-center mt-1">
             <FontAwesomeIcon icon={faInstagram} className="mr-1 text-pink-600" />
-            {contact.instagramUsername ? (
+            {contact.instagramUser ? (
               <a
-                href={`https://instagram.com/${contact.instagramUsername}`}
+                href={`https://instagram.com/${contact.instagramUser.username}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-base text-pink-600 hover:underline flex items-center"
               >
-                @{contact.instagramUsername}
+                @{contact.instagramUser.username}
                 <FontAwesomeIcon
                   icon={faExternalLinkAlt}
                   className="ml-1 text-xs"

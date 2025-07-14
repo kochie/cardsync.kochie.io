@@ -34,12 +34,7 @@ import EditablePhone from "./EditablePhone";
 import Section from "../ui/section";
 import GroupCard from "./GroupCard";
 import { useRouter } from "next/navigation";
-
-interface Group {
-  id: string;
-  name: string;
-  memberCount?: number;
-}
+import { Group } from "@/models/groups";
 
 export default function EditingView({
   contact,
@@ -74,18 +69,15 @@ export default function EditingView({
     if (!contact) return;
     supabase
       .from("carddav_group_members")
-      .select(`group_id, carddav_groups (id, name, description, address_book)`)
+      .select(`group_id, carddav_groups (*), carddav_contacts(carddav_addressbooks(*))`)
       .eq("member_id", contact.id)
       .then(({ data, error }) => {
-        if (error) {
+        if (error || !data) {
           setGroups([]);
           return;
         }
         setGroups(
-          (data ?? [])
-            .map((gm: any) => gm.carddav_groups)
-            .filter((g): g is { id: string; name: string } => g && typeof g.name === 'string' && g.name.length > 0)
-            .map((g) => ({ id: g.id, name: g.name }))
+          data.map((gm) => Group.fromDatabaseObject(gm.carddav_groups, gm.carddav_contacts.carddav_addressbooks, []))
         );
       });
   }, [contact, supabase]);
@@ -202,6 +194,8 @@ export default function EditingView({
             body: JSON.stringify({ contactId: contact.id, imageBase64: base64 })
           });
           if (resp.ok) {
+            // TODO: Handle the response if needed
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const data = await resp.json();
             // Optionally update UI with new blur (forces re-render)
             setAvatarUrl(`assets/${path}?t=${Date.now()}`);
@@ -213,6 +207,7 @@ export default function EditingView({
       };
       reader.readAsDataURL(file);
     } catch (err) {
+      console.error("Error uploading photo:", err);
       toast.error("Failed to upload photo");
     } finally {
       setIsUploadingPhoto(false);
@@ -322,10 +317,8 @@ export default function EditingView({
           <div className="w-full flex flex-row justify-start mt-3">
             <SocialMediaPhotos
               contactId={editableContact.id}
-              linkedinContactId={editableContact.linkedinContactId}
-              linkedinContactMoniker={editableContact.linkedinContact}
-              instagramContactId={editableContact.instagramContactId}
-              instagramUsername={editableContact.instagramUsername}
+              linkedinContactId={editableContact.linkedinUser?.internalId}
+              instagramContactId={editableContact.instagramUser?.internalId}
               onPhotoApplied={handlePhotoApplied}
             />
           </div>
@@ -531,51 +524,22 @@ export default function EditingView({
             <LinkedinSelector
               defaultValue={selectedLinkedin}
               onSelect={(linkedinContact) => {
-                if (linkedinContact) {
-                  updateContact({
-                    linkedinContact: linkedinContact.publicIdentifier,
-                    linkedinContactId: linkedinContact.internalId,
-                    linkedinUrn: linkedinContact.entityUrn,
-                  });
-                } else {
-                  updateContact({
-                    linkedinContact: undefined,
-                    linkedinContactId: undefined,
-                    linkedinUrn: undefined,
-                  });
-                }
+                updateContact({
+                  linkedinUser: linkedinContact ?? undefined
+                });
               }}
             />
           </div>
           <div className="flex items-center mt-2">
             <InstagramSelector
-              defaultValue={editableContact.instagramUsername ? {
-                connectionId: editableContact.instagramConnectionId ?? "",
-                userId: editableContact.instagramContactId ?? "",
-                username: editableContact.instagramUsername,
-                fullName: undefined,
-                profilePicture: undefined,
-                isPrivate: false,
-                isVerified: false,
-                followerCount: 0,
-                followingCount: 0,
-                mutualFollowers: [],
-                followedByViewer: false,
-                followsViewer: false,
-                requestedByViewer: false,
-              } : undefined}
+              defaultValue={editableContact.instagramUser}
               onSelect={(instagramContact) => {
-                if (instagramContact) {
-                  updateContact({
-                    instagramUsername: instagramContact.username,
-                    instagramContactId: instagramContact.internalId,
+
+                updateContact({
+                    instagramUser: instagramContact ?? undefined
                   });
-                } else {
-                  updateContact({
-                    instagramUsername: undefined,
-                    instagramContactId: undefined,
-                  });
-                }
+                  
+
               }}
             />
           </div>
@@ -586,10 +550,10 @@ export default function EditingView({
       {/* Social Media Enrichment Section */}
       <SocialMediaEnrichment
         contactId={editableContact.id}
-        linkedinContactId={editableContact.linkedinContactId}
-        linkedinContactMoniker={editableContact.linkedinContact}
-        instagramContactId={editableContact.instagramContactId}
-        instagramUsername={editableContact.instagramUsername}
+        linkedinContactId={editableContact.linkedinUser?.internalId}
+        linkedinContactMoniker={editableContact.linkedinUser?.publicIdentifier}
+        instagramContactId={editableContact.instagramUser?.internalId}
+        instagramUsername={editableContact.instagramUser?.username}
         currentData={{
           name: editableContact.name,
           title: editableContact.title,

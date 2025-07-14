@@ -32,18 +32,18 @@ export default function InstagramSelector({
         .ilike("full_name", `%${searchQuery}%`)
         .limit(10)
         .order("full_name", { ascending: true });
-      if (error) {
+      if (error || !data) {
         console.error("Error fetching Instagram contacts:", error);
         return;
       }
       setInstagramContacts(
-        (data ?? []).map((item: any) => ({
+        data.map((item) => ({
           internalId: item.internal_id,
           connectionId: item.connection_id,
           userId: item.user_id_instagram,
           username: item.username,
-          fullName: item.full_name,
-          profilePicture: item.profile_picture,
+          fullName: item.full_name ?? undefined,
+          profilePicture: item.profile_picture ?? undefined,
           isPrivate: item.is_private,
           isVerified: item.is_verified,
           followerCount: item.follower_count ?? 0,

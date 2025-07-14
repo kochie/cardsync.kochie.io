@@ -60,8 +60,8 @@ export default function EditableEmail({
 
   const removeType = (type: string) => {
     const newTypes = types.filter((t) => t !== type);
-    const newParams = { ...email.params, TYPE: newTypes };
-    if (newTypes.length === 0) delete (newParams as any).TYPE;
+    const newParams: {[key:string]: string[]} = { ...email.params, TYPE: newTypes };
+    if (newTypes.length === 0) delete newParams.TYPE;
     onUpdate(new VCardProperty(email.key, newParams, email.value, email.group));
   };
 

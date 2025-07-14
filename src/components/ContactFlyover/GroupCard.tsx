@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUsers, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { createClient } from "@/utils/supabase/client";
+import { Group } from "@/models/groups";
 
 interface GroupCardProps {
-  group: {
-    id: string;
-    name: string;
-  };
+  group: Group
   onRemove?: (groupId: string) => void;
   showRemoveButton?: boolean;
 }

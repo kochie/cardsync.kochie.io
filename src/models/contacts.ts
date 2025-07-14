@@ -10,7 +10,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AddressBook } from "../models/addressBook.ts";
 import { uploadImageToSupabase } from "../utils/storage/index.ts";
 import { getImageData, Photo } from "../utils/image/index.ts";
-import { LinkedinContact } from "./linkedinContact.ts";
+import { LinkedinContact, LinkedinContactModel } from "./linkedinContact.ts";
+import { InstagramContactModel } from "@/types/instagram.types.ts";
+import { InstagramContact } from "./instagramContact.ts";
 
 // Check if the photo is a base64 encoded string
 
@@ -33,12 +35,10 @@ export interface ContactModel {
   company?: string; // Company name
   title?: string; // Job title
   role?: string; // Job title
-  linkedinContact?: string; // public_identifier for display
-  linkedinContactId?: string; // internal_id for linking
-  instagramUsername?: string; // Optional, used for tracking connections
-  instagramContactId?: string; // Optional, used for tracking connections
-  instagramConnectionId?: string; // Optional, used for tracking connections
-  linkedinUrn?: string; // Optional, used for tracking connections
+
+  instagramUser: InstagramContactModel | undefined; // Optional, used for tracking connections
+  linkedinUser: LinkedinContactModel | undefined; // Optional, used for tracking connections
+
   photoBlurUrl?: string; // Optional, used for tracking connections
   addressBook: AddressBook; // Optional, used for tracking connections
   birthday?: Date;
@@ -57,13 +57,9 @@ export class Contact {
   #company?: string; // Company name
   #title?: string; // Job title
   #role?: string; // Job title
-  #linkedinContact?: string;
-  #linkedinContactId?: string; // internal_id for linking
-  #linkedinUrn?: string; // Optional, used for tracking connections
 
-  #instagramUsername?: string; // Optional, used for tracking connections
-  #instagramContactId?: string;
-  #instagramConnectionId?: string;
+  #linkedinUser?: LinkedinContactModel
+  #instagramUser?: InstagramContactModel
 
   #birthday?: Date;
   #addressBook: AddressBook;
@@ -84,12 +80,8 @@ export class Contact {
     role,
     title,
     addressBook,
-    linkedinContact,
-    linkedinContactId,
-    linkedinUrn,
-    instagramUsername,
-    instagramContactId,
-    instagramConnectionId,
+    linkedinUser,
+    instagramUser,
     birthday,
     photoBlurUrl,
     notes = [],
@@ -111,20 +103,15 @@ export class Contact {
       const normalizedValue = normalizePhoneNumber(phone.value);
       return new VCardProperty(phone.key, phone.params, normalizedValue);
     });
+
+    this.#linkedinUser = linkedinUser;
+    this.#instagramUser = instagramUser;
     
     this.#photos = photos;
     this.#lastUpdated = lastUpdated ? new Date(lastUpdated) : undefined;
     this.#company = company;
     this.#title = title;
     this.#role = role;
-    this.#linkedinContact = linkedinContact; // Optional, used for tracking connections
-    this.#linkedinContactId = linkedinContactId; // internal_id for linking
-
-    this.#instagramUsername = instagramUsername; // Optional, used for tracking connections
-    this.#instagramContactId = instagramContactId; // Optional, used for tracking connections
-    this.#instagramConnectionId = instagramConnectionId;
-
-    this.#linkedinUrn = linkedinUrn;
     this.#addressBook = addressBook;
     this.#birthday = birthday;
     this.#photoBlurUrl = photoBlurUrl;
@@ -137,36 +124,20 @@ export class Contact {
     return this.#name;
   }
 
-  get linkedinContact(): string | undefined {
-    return this.#linkedinContact;
+  get linkedinUser(): LinkedinContactModel | undefined {
+    return this.#linkedinUser;
   }
 
-  get linkedinContactId(): string | undefined {
-    return this.#linkedinContactId;
+  set linkedinUser(linkedinUser: LinkedinContactModel | undefined) {
+    this.#linkedinUser = linkedinUser;
   }
 
-  setLinkedinContact(linkedinContact?: LinkedinContact | null): void {
-    if (linkedinContact) {
-      this.#linkedinContact = linkedinContact.publicIdentifier;
-      this.#linkedinContactId = linkedinContact.internal_id; // fix: use internal_id
-      this.#linkedinUrn = linkedinContact.entityUrn;
-    } else {
-      this.#linkedinContact = undefined;
-      this.#linkedinContactId = undefined;
-      this.#linkedinUrn = undefined;
-    }
+  get instagramUser(): InstagramContactModel | undefined {
+    return this.#instagramUser;
   }
 
-  get instagramUsername(): string | undefined {
-    return this.#instagramUsername;
-  }
-
-  get instagramContactId(): string | undefined {
-    return this.#instagramContactId;
-  }
-
-  get instagramConnectionId(): string | undefined {
-    return this.#instagramConnectionId;
+  set instagramUser(instagramUser: InstagramContactModel | undefined) {
+    this.#instagramUser = instagramUser;
   }
 
   get addressBook(): AddressBook {
@@ -234,12 +205,8 @@ export class Contact {
       title: this.#title,
       role: this.#role,
       addressBook: this.#addressBook,
-      linkedinContact: this.#linkedinContact,
-      linkedinContactId: this.#linkedinContactId,
-      linkedinUrn: this.#linkedinUrn,
-      instagramUsername: this.#instagramUsername,
-      instagramContactId: this.#instagramContactId,
-      instagramConnectionId: this.#instagramConnectionId,
+      linkedinUser: this.#linkedinUser,
+      instagramUser: this.#instagramUser,
       photoBlurUrl: this.photoBlurUrl,
       birthday: this.#birthday,
       notes: this.#notes,
@@ -416,18 +383,30 @@ export class Contact {
     if (this.#title) vcard.set("title", this.#title);
     if (this.#role) vcard.set("role", this.#role);
 
-    if (this.#linkedinContact) {
-      vcard.set("x-socialprofile", this.#linkedinContact, {
+    if (this.#linkedinUser) {
+      vcard.set("x-socialprofile", this.#linkedinUser.publicIdentifier, {
         type: ["linkedin"],
       });
       const linkedinUrl = `https://www.linkedin.com/in/${
-        this.#linkedinContact
+        this.#linkedinUser.publicIdentifier
       }`;
       vcard.add("url", linkedinUrl, {
         type: ["linkedin"],
         label: ["LinkedIn"],
       });
     }
+
+    if (this.#instagramUser) {
+      vcard.set("x-socialprofile", this.#instagramUser.username, {
+        type: ["instagram"],
+      });
+      const instagramUrl = `https://www.instagram.com/${this.#instagramUser.username}`;
+      vcard.add("url", instagramUrl, {
+        type: ["instagram"],
+        label: ["Instagram"],
+      });
+    }
+
     if (this.#birthday) {
       let year = "--";
       if (this.#birthday.getFullYear() > 1900) {
@@ -466,7 +445,12 @@ export class Contact {
    */
   static async fromVcard(
     contact: DAVVCard,
-    addressBook: AddressBook
+    addressBook: AddressBook,
+    options: {
+      supabase?: SupabaseClient;
+      linkedinConnectionIds?: string[];
+      instagramConnectionIds?: string[];
+    } = {}
   ): Promise<Contact> {
     const DEFINED_KEYS = [
       "UID",
@@ -542,6 +526,28 @@ export class Contact {
       }
     })();
 
+        const instagramIndentifier = (() => {
+      if (card.has("x-socialprofile")) {
+        const profiles = card.get("x-socialprofile");
+        for (const profile of profiles) {
+          if (profile.params.type?.includes("istagram"))
+            return profile.value.split("/").slice(-2, -1)[0]; // Extract the identifier from the URL
+        }
+      }
+
+      const keys = ["x-fm-online-other", "url"];
+      for (const key of keys) {
+        if (card.has(key)) {
+          const profiles = card.get(key);
+          for (const profile of profiles) {
+            if (profile.params.type?.includes("instagram")) {
+              return profile.value.split("/").slice(-2, -1)[0]; // Extract the identifier from the URL
+            }
+          }
+        }
+      }
+    })();
+
     const birthday = (() => {
       if (card.has("BDAY")) {
         const bday = card.get("BDAY").value;
@@ -576,18 +582,19 @@ export class Contact {
       title: card.has("TITLE") ? card.get("TITLE").value : undefined,
       role: card.has("ROLE") ? card.get("ROLE").value : undefined,
       addressBook: addressBook,
-      linkedinContact: linkedinIndentifier,
-      linkedinContactId: undefined, // Not available in vCard
+      linkedinUser: linkedinIndentifier && options.supabase && options.linkedinConnectionIds ? (await LinkedinContact.getByIdentifier(linkedinIndentifier, options.supabase, options.linkedinConnectionIds))?.toModel() : undefined,
+      instagramUser: instagramIndentifier && options.supabase && options.instagramConnectionIds ? (await InstagramContact.getByIdentifier(instagramIndentifier, options.supabase, options.instagramConnectionIds))?.toModel() : undefined,
       birthday,
       notes: card.has("NOTE") ? card.get("NOTE").map((note) => note.value) : [],
-      others: Array.from(card.records.entries().filter(([key]) => !DEFINED_KEYS.includes(key.toUpperCase())).flatMap(([,properties]) => properties))
+      others: Array.from(card.records.entries().filter(([key]) => !DEFINED_KEYS.includes(key.toUpperCase())).flatMap(([,properties]) => properties)),
+      hidden: false
     })
   }
 
   static fromDatabaseObject(
     data: Tables<"carddav_contacts"> & {
-      linkedin_contacts: { internal_id: string; public_identifier: string | null; entity_urn: string | null } | null;
-      instagram_contacts: { internal_id: string; username: string | null } | null;
+      linkedin_contacts: Tables<"linkedin_contacts"> | null;
+      instagram_contacts: Tables<"instagram_contacts"> | null;
       carddav_addressbooks: Tables<"carddav_addressbooks">;
     }
   ): Contact {
@@ -611,13 +618,8 @@ export class Contact {
       role: data.role ?? undefined,
       id: data.id_is_uppercase ? data.id.toUpperCase() : data.id,
 
-      linkedinContact: data.linkedin_contacts?.public_identifier ?? undefined,
-      linkedinContactId: data.linkedin_id ?? undefined,
-      linkedinUrn: data.linkedin_contacts?.entity_urn ?? undefined,
-
-      instagramUsername: data.instagram_contacts?.username ?? undefined,
-      instagramContactId: data.instagram_id ?? undefined,
-      instagramConnectionId: undefined, // Remove if not in schema
+      instagramUser: data.instagram_contacts ? InstagramContact.fromDatabaseObject(data.instagram_contacts).toModel(): undefined,
+      linkedinUser: data.linkedin_contacts ? LinkedinContact.fromDatabaseObject(data.linkedin_contacts).toModel() : undefined,
 
       photoBlurUrl: data.photo_blur_url ?? undefined,
       lastUpdated: new Date(data.last_updated),
@@ -652,8 +654,8 @@ export class Contact {
       company: this.#company ?? null,
       title: this.#title ?? null,
       role: this.#role ?? null,
-      linkedin_id: this.#linkedinContactId ?? null,
-      instagram_id: this.#instagramContactId ?? null,
+      linkedin_id: this.#linkedinUser?.internalId ?? null,
+      instagram_id: this.#instagramUser?.internalId ?? null,
       last_updated:
         this.#lastUpdated?.toISOString() ?? new Date().toISOString(),
       photo_blur_url,
