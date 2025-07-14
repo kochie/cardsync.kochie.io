@@ -7,13 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      country-flag-icons:
-        specifier: ^1.5.19
-        version: 1.5.19
-      libphonenumber-js:
-        specifier: ^1.12.9
-        version: 1.12.10
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -123,6 +116,9 @@ importers:
       cookie:
         specifier: ^1.0.2
         version: 1.0.2
+      country-flag-icons:
+        specifier: ^1.5.19
+        version: 1.5.19
       dav:
         specifier: ^1.8.0
         version: 1.8.0
@@ -135,6 +131,9 @@ importers:
       framer-motion:
         specifier: ^12.16.0
         version: 12.23.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      libphonenumber-js:
+        specifier: ^1.12.9
+        version: 1.12.10
       lucide-react:
         specifier: ^0.507.0
         version: 0.507.0(react@19.1.0)
