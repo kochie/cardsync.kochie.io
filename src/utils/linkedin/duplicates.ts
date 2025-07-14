@@ -9,7 +9,9 @@ export async function linkedinDetectDuplicates(connectionId: string) {
   const supabase = await createClient();
   console.log("Detecting duplicates in CardDAV connections...");
 
-  const { data, error } = await supabase.rpc("match_linkedin_by_name", {p_connection_id: connectionId});
+  const { data, error } = await supabase.rpc("match_linkedin_by_name", {
+    p_connection_id: connectionId,
+  });
 
   if (error) {
     console.error("Error detecting duplicates:", error);
@@ -17,13 +19,13 @@ export async function linkedinDetectDuplicates(connectionId: string) {
   }
 
   console.log(
-    `Found ${data.valueOf()} matching contacts in CardDAV connections`
+    `Found ${data.valueOf()} matching contacts in CardDAV connections`,
   );
 }
 
 export async function copyLinkedinDetails(
   contactId: string,
-  addressBookId: string
+  addressBookId: string,
 ) {
   const supabase = await createClient();
 
@@ -37,7 +39,7 @@ export async function copyLinkedinDetails(
   }
 
   console.log(
-    `Merging LinkedIn contacts for user ${user.id}, contactId: ${contactId}, addressBookId: ${addressBookId}`
+    `Merging LinkedIn contacts for user ${user.id}, contactId: ${contactId}, addressBookId: ${addressBookId}`,
   );
 
   const { data, error } = await supabase
@@ -48,7 +50,7 @@ export async function copyLinkedinDetails(
       linkedin_contacts (*),
       instagram_contacts (*),
       carddav_addressbooks (*)
-    `
+    `,
     )
     .eq("id", contactId)
     .eq("address_book", addressBookId)
@@ -66,12 +68,12 @@ export async function copyLinkedinDetails(
     };
   }
   const linkedinProfile = LinkedinContact.fromDatabaseObject(
-    data.linkedin_contacts
+    data.linkedin_contacts,
   );
   const contact = Contact.fromDatabaseObject(data);
 
   for (const phone of linkedinProfile.phoneNumbers) {
-    contact.addPhone([phone.type], phone.number);
+    contact.addPhone(phone.type ? [phone.type] : [], phone.number);
   }
 
   for (const email of linkedinProfile.emailAddresses ?? []) {

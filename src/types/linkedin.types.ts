@@ -176,7 +176,7 @@ export interface LinkedInProfileContactInfo {
 }
 
 export interface LinkedInWebsite {
-  type: string;
+  type?: string;
   url: string;
 }
 
@@ -186,6 +186,11 @@ export interface LinkedInTwitterHandle {
 }
 
 export interface LinkedInPhoneNumber {
-  type: string; // e.g. "MOBILE", "HOME", "WORK"
+  type?: string; // e.g. "MOBILE", "HOME", "WORK"
   number: string; // e.g. "+61434637097"
+}
+
+export interface LinkedinEmail {
+  emailAddress: string;
+  type?: string; // e.g. "work", "personal"
 }

@@ -15,6 +15,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useCallback, useEffect, useState } from "react";
 import { LinkedinConnection, ConnectionStatus } from "@/models/linkedinContact";
 import { Tables } from "@/types/database.types";
+import toast from "react-hot-toast";
 
 type SocialConnection = {
   id: string;
@@ -30,7 +31,9 @@ type SocialConnection = {
 };
 
 // Minimal InstagramConnection class for table display
-function instagramToPlainObject(data: Tables<"instagram_connections">): SocialConnection {
+function instagramToPlainObject(
+  data: Tables<"instagram_connections">,
+): SocialConnection {
   return {
     id: data.id,
     cookies: data.cookies,
@@ -66,18 +69,32 @@ export default function SocialConnections() {
   const [connections, setConnections] = useState<SocialConnection[]>([]);
 
   const fetchConnections = useCallback(async () => {
-    const [{ data: linkedinData, error: linkedinError }, { data: instagramData, error: instagramError }] = await Promise.all([
+    const [
+      { data: linkedinData, error: linkedinError },
+      { data: instagramData, error: instagramError },
+    ] = await Promise.all([
       supabase.from("linkedin_connections").select("*"),
       supabase.from("instagram_connections").select("*"),
     ]);
 
     if (linkedinError || instagramError) {
-      console.error("Error fetching connections:", linkedinError, instagramError);
+      console.error(
+        "Error fetching connections:",
+        linkedinError,
+        instagramError,
+      );
       return;
     }
 
-    const linkedinConnections: SocialConnection[] = (linkedinData || []).map((connection) => linkedinToPlainObject(LinkedinConnection.fromDatabaseObject(connection)));
-    const instagramConnections: SocialConnection[] = (instagramData || []).map((connection) => instagramToPlainObject(connection));
+    const linkedinConnections: SocialConnection[] = (linkedinData || []).map(
+      (connection) =>
+        linkedinToPlainObject(
+          LinkedinConnection.fromDatabaseObject(connection),
+        ),
+    );
+    const instagramConnections: SocialConnection[] = (instagramData || []).map(
+      (connection) => instagramToPlainObject(connection),
+    );
 
     setConnections([...linkedinConnections, ...instagramConnections]);
   }, [supabase]);
@@ -96,19 +113,23 @@ export default function SocialConnections() {
           } else if (payload.eventType === "INSERT") {
             return [
               ...prev,
-              linkedinToPlainObject(LinkedinConnection.fromDatabaseObject(payload.new)),
+              linkedinToPlainObject(
+                LinkedinConnection.fromDatabaseObject(payload.new),
+              ),
             ];
           } else if (payload.eventType === "UPDATE") {
             return prev.map((account) =>
               account.id === payload.new?.id && account.provider === "linkedin"
-                ? linkedinToPlainObject(LinkedinConnection.fromDatabaseObject(payload.new))
-                : account
+                ? linkedinToPlainObject(
+                    LinkedinConnection.fromDatabaseObject(payload.new),
+                  )
+                : account,
             );
           }
           return prev;
         });
         console.log("LinkedIn change received!", payload);
-      }
+      },
     );
 
     // Instagram
@@ -120,21 +141,18 @@ export default function SocialConnections() {
           if (payload.eventType === "DELETE") {
             return prev.filter((account) => account.id !== payload.old.id);
           } else if (payload.eventType === "INSERT") {
-            return [
-              ...prev,
-              instagramToPlainObject(payload.new),
-            ];
+            return [...prev, instagramToPlainObject(payload.new)];
           } else if (payload.eventType === "UPDATE") {
             return prev.map((account) =>
               account.id === payload.new?.id && account.provider === "instagram"
                 ? instagramToPlainObject(payload.new)
-                : account
+                : account,
             );
           }
           return prev;
         });
         console.log("Instagram change received!", payload);
-      }
+      },
     );
 
     channel.subscribe();
@@ -142,10 +160,30 @@ export default function SocialConnections() {
   }, [supabase]);
 
   const handleDelete = async (id: string, provider: string) => {
+    console.log(`Deleting ${provider} connection with ID: ${id}`);
+
     if (provider === "linkedin") {
-      await supabase.from("linkedin_connections").delete().eq("id", id);
+      const { error } = await supabase
+        .from("linkedin_connections")
+        .delete()
+        .eq("id", id);
+      if (error) {
+        console.error("Error deleting LinkedIn connection:", error);
+        toast.error("Failed to delete LinkedIn connection", {
+          id: `delete-linkedin-${id}`,
+        });
+      }
     } else if (provider === "instagram") {
-      await supabase.from("instagram_connections").delete().eq("id", id);
+      const { error } = await supabase
+        .from("instagram_connections")
+        .delete()
+        .eq("id", id);
+      if (error) {
+        console.error("Error deleting Instagram connection:", error);
+        toast.error("Failed to delete Instagram connection", {
+          id: `delete-instagram-${id}`,
+        });
+      }
     }
     // UI will update automatically due to realtime subscription
   };
@@ -157,7 +195,7 @@ export default function SocialConnections() {
     return () => {
       // Cleanup the subscription when the component unmounts
       channels.unsubscribe();
-    }
+    };
   }, [fetchConnections, listenForConnectionChanges]);
 
   return (

@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
+import { LinkedinContact } from "@/models/linkedinContact";
 
 interface SocialMediaEnrichmentProps {
   contactId: string;
@@ -59,11 +60,18 @@ export default function SocialMediaEnrichment({
     // Fetch LinkedIn data if contact has LinkedIn connection
     if (linkedinContactId) {
       try {
-        const { data: linkedinData } = await supabase
+        const { data: linkedinData, error } = await supabase
           .from("linkedin_contacts")
           .select("*")
           .eq("internal_id", linkedinContactId)
           .single();
+
+        if (error || !linkedinData) {
+          console.error("Error fetching LinkedIn data:", error);
+          return;
+        }
+
+        const linkedinContact = LinkedinContact.fromDatabaseObject(linkedinData);
 
         if (linkedinData) {
           data.push({
@@ -72,10 +80,8 @@ export default function SocialMediaEnrichment({
             data: {
               name: linkedinData.full_name ?? undefined,
               title: linkedinData.headline ?? undefined,
-              email: linkedinData.email_address?.[0] ?? undefined,
-              phone: Array.isArray(linkedinData.phone_numbers) && linkedinData.phone_numbers.length > 0 
-                ? (linkedinData.phone_numbers[0] as {number: string})?.number ?? undefined
-                : undefined,
+              email: linkedinContact.emailAddresses?.[0]?.emailAddress ?? undefined,
+              phone: linkedinContact.phoneNumbers?.[0]?.number ?? undefined,
               profilePicture: linkedinData.profile_picture ?? undefined,
             },
           });

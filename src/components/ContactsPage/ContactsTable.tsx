@@ -23,6 +23,8 @@ import SupabaseAvatar from "@/components/SupabaseAvatar";
 import { getEmailTypeColor } from "@/utils/color/badgeColor";
 import { useUser } from "@/app/context/userContext";
 import { formatPhoneNumber, getCountryFlag, getCountryFromPhoneNumber } from "@/utils/phone/format";
+import MergeContactsDialog from "./MergeContactsDialog";
+import React from "react";
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -30,9 +32,10 @@ interface ContactsTableProps {
   sortDirection: "asc" | "desc";
   onSort: (field: string) => void;
   onContactSelect: (contact: Contact) => void;
-  selectedContacts: Set<string>;
-  onContactSelectionChange: (contactId: string, selected: boolean) => void;
+  selectedContactsMap: Map<string, Contact>;
+  onContactSelectionChange: (contact: Contact, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
+  onUnselectAll: () => void;
 }
 
 export default function ContactsTable({
@@ -41,14 +44,49 @@ export default function ContactsTable({
   sortDirection,
   onSort,
   onContactSelect,
-  selectedContacts,
+  selectedContactsMap,
   onContactSelectionChange,
   onSelectAll,
+  onUnselectAll,
 }: ContactsTableProps) {
   const { user } = useUser();
+  const [mergeDialogOpen, setMergeDialogOpen] = React.useState(false);
 
-  const allSelected = contacts.length > 0 && contacts.every(contact => selectedContacts.has(contact.id));
-  const someSelected = contacts.some(contact => selectedContacts.has(contact.id));
+  const allSelected = contacts.length > 0 && contacts.every(contact => selectedContactsMap.has(contact.id));
+  const someSelected = contacts.some(contact => selectedContactsMap.has(contact.id));
+
+  // Compute selected contacts
+  const selectedContactsList = Array.from(selectedContactsMap.values());
+  const primaryContact = selectedContactsList[0];
+  const secondaryContacts = selectedContactsList.slice(1);
+
+  // Compute merged data (emails, phones, etc.)
+  const mergedData = React.useMemo(() => {
+    if (!primaryContact) return { emails: [], phones: [] };
+    const emails = new Set(primaryContact.emails?.map(e => e.value) ?? []);
+    const phones = new Set(primaryContact.phones?.map(p => p.value) ?? []);
+    for (const contact of secondaryContacts) {
+      (contact.emails ?? []).forEach(e => emails.add(e.value));
+      (contact.phones ?? []).forEach(p => phones.add(p.value));
+    }
+    return {
+      emails: Array.from(emails),
+      phones: Array.from(phones),
+    };
+  }, [primaryContact, secondaryContacts]);
+
+  const handleMerge = () => {
+    setMergeDialogOpen(true);
+  };
+
+  const handleMergeConfirm = () => {
+    // TODO: Implement actual merge logic
+    setMergeDialogOpen(false);
+  };
+
+  const handleMergeCancel = () => {
+    setMergeDialogOpen(false);
+  };
 
   const renderEmailCell = (contact: Contact) => {
     const email = contact.emails?.[0];
@@ -157,6 +195,36 @@ export default function ContactsTable({
 
   return (
     <div className="rounded-md border">
+      {/* Merge Button Toolbar */}
+      <div className="flex items-center gap-2 p-2 border-b bg-muted">
+        <Button
+          color="dark/zinc"
+          disabled={selectedContactsMap.size < 2}
+          onClick={handleMerge}
+        >
+          Merge
+        </Button>
+        <Button
+          plain
+          disabled={selectedContactsMap.size === 0}
+          onClick={onUnselectAll}
+        >
+          Unselect All
+        </Button>
+        {/* You can add more bulk actions here */}
+      </div>
+      {/* Merge Contacts Dialog */}
+      {primaryContact && (
+        <MergeContactsDialog
+          open={mergeDialogOpen}
+          onClose={handleMergeCancel}
+          onConfirm={handleMergeConfirm}
+          primaryContact={primaryContact}
+          secondaryContacts={secondaryContacts}
+          mergedData={mergedData}
+        />
+      )}
+      {/* Table */}
       <Table>
         <TableHead>
           <TableRow>
@@ -194,8 +262,8 @@ export default function ContactsTable({
               >
                 <TableCell>
                   <Checkbox
-                    checked={selectedContacts.has(contact.id)}
-                    onChange={(checked) => onContactSelectionChange(contact.id, checked)}
+                    checked={selectedContactsMap.has(contact.id)}
+                    onChange={(checked) => onContactSelectionChange(contact, checked)}
                     aria-label={`Select ${contact.name}`}
                   />
                 </TableCell>

@@ -54,8 +54,8 @@ export default function ContactsPage() {
   const [isAddContactDialogOpen, setIsAddContactDialogOpen] = useState(false);
   const [isNewContact, setIsNewContact] = useState(false);
 
-  // State for contact selection
-  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  // State for contact selection (Map of contactId -> Contact)
+  const [selectedContactsMap, setSelectedContactsMap] = useState<Map<string, Contact>>(new Map());
 
   // Fetch contacts when filters change
   useEffect(() => {
@@ -137,31 +137,44 @@ export default function ContactsPage() {
   };
 
   // Contact selection handlers
-  const handleContactSelectionChange = (contactId: string, selected: boolean) => {
-    const newSelected = new Set(selectedContacts);
-    if (selected) {
-      newSelected.add(contactId);
-    } else {
-      newSelected.delete(contactId);
-    }
-    setSelectedContacts(newSelected);
+  const handleContactSelectionChange = (contact: Contact, selected: boolean) => {
+    setSelectedContactsMap(prev => {
+      const newMap = new Map(prev);
+      if (selected) {
+        newMap.set(contact.id, contact);
+      } else {
+        newMap.delete(contact.id);
+      }
+      return newMap;
+    });
   };
 
   const handleSelectAll = (selected: boolean) => {
-    if (selected) {
-      setSelectedContacts(new Set(contacts.map(c => c.id)));
-    } else {
-      setSelectedContacts(new Set());
-    }
+    setSelectedContactsMap(prev => {
+      if (selected) {
+        const newMap = new Map(prev);
+        contacts.forEach(contact => newMap.set(contact.id, contact));
+        return newMap;
+      } else {
+        const newMap = new Map(prev);
+        contacts.forEach(contact => newMap.delete(contact.id));
+        return newMap;
+      }
+    });
+  };
+
+  // Unselect all contacts (clear all selections)
+  const handleUnselectAll = () => {
+    setSelectedContactsMap(new Map());
   };
 
   const handleHideContacts = async () => {
-    if (selectedContacts.size === 0) {
+    if (selectedContactsMap.size === 0) {
       toast.error("No contacts selected");
       return;
     }
 
-    const result = await hideContacts(Array.from(selectedContacts));
+    const result = await hideContacts(Array.from(selectedContactsMap.keys()));
     
     if (result.error) {
       toast.error(result.error);
@@ -169,7 +182,7 @@ export default function ContactsPage() {
     }
 
     toast.success(`Hidden ${result.count} contact${result.count === 1 ? '' : 's'}`);
-    setSelectedContacts(new Set());
+    setSelectedContactsMap(new Map());
     
     // Refresh the contacts data
     fetchContacts(
@@ -197,14 +210,14 @@ export default function ContactsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {selectedContacts.size > 0 && (
+            {selectedContactsMap.size > 0 && (
               <Button
                 outline
                 onClick={handleHideContacts}
                 className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50 dark:text-red-400 dark:border-red-400 dark:hover:bg-red-950/20"
               >
                 <EyeOff className="h-4 w-4" />
-                Hide {selectedContacts.size} Contact{selectedContacts.size === 1 ? '' : 's'}
+                Hide {selectedContactsMap.size} Contact{selectedContactsMap.size === 1 ? '' : 's'}
               </Button>
             )}
             <Button 
@@ -248,9 +261,10 @@ export default function ContactsPage() {
             sortDirection={sortDirection}
             onSort={handleSort}
             onContactSelect={handleContactSelect}
-            selectedContacts={selectedContacts}
+            selectedContactsMap={selectedContactsMap}
             onContactSelectionChange={handleContactSelectionChange}
             onSelectAll={handleSelectAll}
+            onUnselectAll={handleUnselectAll}
           />
         )}
 

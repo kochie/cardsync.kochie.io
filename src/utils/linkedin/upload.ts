@@ -16,7 +16,7 @@ export async function uploadConnections(
           LinkedinContact.fromLinkedinData(
             element,
             profile,
-            connectionId
+            connectionId,
           ).toDatabaseObject()
         )
     )

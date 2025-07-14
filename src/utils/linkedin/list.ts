@@ -1,7 +1,7 @@
 import { LinkedinConnection } from "@/models/linkedinContact";
 import { Element, LinkedInProfileContactInfo, Root } from "@/types/linkedin.types";
 import asyncPool from "tiny-async-pool";
-import { getProfileData } from "./profile";
+// import { getProfileData } from "./profile";
 
 // Helper function to add random delay simulating human behavior
 function randomDelay(min: number, max: number): Promise<void> {
@@ -54,10 +54,13 @@ export async function* getLinkedinConnections(connection: LinkedinConnection): A
         if (el.connectedMemberResolutionResult?.publicIdentifier) {
           return [
             el,
-            await getProfileData(
-              el.connectedMemberResolutionResult.publicIdentifier,
-              options
-            ),
+            // await getProfileData(
+            //   el.connectedMemberResolutionResult.publicIdentifier,
+            //   options
+            // ),
+            {
+              entityUrn: el.entityUrn,
+            }
           ];
         } else {
           return [
@@ -70,7 +73,7 @@ export async function* getLinkedinConnections(connection: LinkedinConnection): A
       };
 
       // Reduce concurrency and add delays between batches
-      for await (const value of asyncPool(3, data.elements, iteratorFn)) {
+      for await (const value of asyncPool(10, data.elements, iteratorFn)) {
         // Yield each profile as it's processed
         yield value;
         // Add small delay between profile processing (0.2-0.8 seconds)

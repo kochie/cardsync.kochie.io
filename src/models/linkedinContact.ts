@@ -1,10 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { Database, Tables } from "../types/database.types.ts";
+import { Database, Json, Tables } from "../types/database.types.ts";
 import {
   Element,
   LinkedInProfileContactInfo,
   LinkedInPhoneNumber,
   LinkedInTwitterHandle,
+  LinkedinEmail,
+  LinkedInWebsite,
 } from "../types/linkedin.types.ts";
 
 export enum ConnectionStatus {
@@ -25,7 +27,7 @@ export interface LinkedinContactModel {
   profilePicture?: string;
   birthDate?: string; // Format: YYYY-MM-DD or MM-DD
   phoneNumbers?: {
-    type: string; // e.g., "MOBILE", "HOME", "WORK"
+    type?: string; // e.g., "MOBILE", "HOME", "WORK"
     number: string;
   }[];
   emailAddresses?: {
@@ -49,6 +51,62 @@ export interface LinkedinConnectionModel {
   lastSynced?: Date;
   status: ConnectionStatus; // e.g., "connected", "disconnected", "error"
   syncFrequency: string; // e.g., "manual", "hourly", "daily", "weekly"
+}
+
+interface ExtendedData {
+  birthDate?: string 
+  phoneNumbers?: LinkedInPhoneNumber[];
+  emailAddresses?: LinkedinEmail[]
+  addresses?: string[]
+  websites?: LinkedInWebsite[]; 
+}
+
+function parseExtendedData(extendedData: Json): ExtendedData {
+  const data: ExtendedData = {};
+
+  if (typeof extendedData === 'object' && extendedData !== null) {
+    if ('birthDate' in extendedData) {
+      const birthDate = extendedData.birthDate as { month: number; day: number };
+      if (birthDate && typeof birthDate.month === 'number' && typeof birthDate.day === 'number') {
+        data.birthDate = `${birthDate.day}-${birthDate.month}`;
+      }
+    }
+    if ('phoneNumbers' in extendedData) {
+      const phoneNumbers = extendedData.phoneNumbers as {type?: string, number: string}[]
+      if (Array.isArray(phoneNumbers)) {
+        data.phoneNumbers = phoneNumbers.map(p => ({
+          type: p.type || "",
+          number: p.number,
+        }));
+      }
+    }
+    if ('emailAddresses' in extendedData) {
+      const emailAddresses = extendedData.emailAddresses as {emailAddress: string, type?: string}[];
+      if (Array.isArray(emailAddresses)) {
+        data.emailAddresses = emailAddresses.map(e => ({
+          emailAddress: e.emailAddress,
+          type: e.type || "",
+        }));
+      }
+    }
+    if ('addresses' in extendedData) {
+      const addresses = extendedData.addresses as string[];
+      if (Array.isArray(addresses)) {
+        data.addresses = addresses;
+      }
+    }
+    if ('websites' in extendedData) {
+      const websites = extendedData.websites as {url: string, type?: string}[];
+      if (Array.isArray(websites)) {
+        data.websites = websites.map(w => ({
+          url: w.url,
+          type: w.type || "",
+        }));
+      }
+    }
+  }
+
+  return data
 }
 
 export class LinkedinConnection {
@@ -113,14 +171,15 @@ export class LinkedinContact {
   #publicIdentifier: string;
   #headline?: string;
   #profilePicture?: string;
-  #birthDateOn?: { month: number; day: number };
+  #internalId?: string;
+
+  #birthDate?: { month: number; day: number };
   #phoneNumbers: LinkedInPhoneNumber[];
-  #emailAddresses?: { emailAddress: string, type?: string }[];
+  #emailAddresses?: LinkedinEmail[];
   #twitterHandles?: LinkedInTwitterHandle[];
-  #primaryTwitterHandle?: LinkedInTwitterHandle;
   #addresses: string[];
   #websites: { url: string; type?: string }[];
-  #internalId?: string;
+  
 
   constructor(
     model: LinkedinContactModel,
@@ -133,7 +192,7 @@ export class LinkedinContact {
     this.#publicIdentifier = model.publicIdentifier;
     this.#headline = model.headline;
     this.#profilePicture = model.profilePicture;
-    this.#birthDateOn = model.birthDate ? {
+    this.#birthDate = model.birthDate ? {
       month: parseInt(model.birthDate.split("-")[0], 10),
       day: parseInt(model.birthDate.split("-")[1], 10),
     } : undefined;
@@ -169,9 +228,7 @@ export class LinkedinContact {
     return this.#profilePicture;
   }
   get birthDate(): string | undefined {
-    return this.#birthDateOn
-      ? `${this.#birthDateOn.month}-${this.#birthDateOn.day}`
-      : undefined;
+    return this.#birthDate ? `${this.#birthDate.day}-${this.#birthDate.month}` : undefined;
   }
   get phoneNumbers(): LinkedInPhoneNumber[] {
     return this.#phoneNumbers;
@@ -182,18 +239,11 @@ export class LinkedinContact {
   get twitterHandles(): LinkedInTwitterHandle[] | undefined {
     return this.#twitterHandles;
   }
-  get primaryTwitterHandle(): LinkedInTwitterHandle | undefined {
-    return this.#primaryTwitterHandle;
-  }
   get addresses(): string[] {
     return this.#addresses;
   }
   get websites(): { url: string; type?: string }[] {
     return this.#websites;
-  }
-
-  get internal_id(): string | undefined {
-    return this.#internalId;
   }
   get internalId(): string | undefined {
     return this.#internalId;
@@ -218,23 +268,19 @@ export class LinkedinContact {
     return LinkedinContact.fromDatabaseObject(data);
   }
 
-  static fromDatabaseObject(
-    data: Tables<"linkedin_contacts">,
-  ): LinkedinContact {
-    // Helper: safely parse Json[] to expected types
-    function parseJsonArray<T>(arr: unknown): T[] {
-      if (!arr) return [];
-      if (Array.isArray(arr)) return arr as T[];
-      return [];
-    }
 
-    const birthDate = (() => {
-      if (!data.birth_date) return undefined;
-      if (typeof data.birth_date === "string") return data.birth_date
-      if (typeof data.birth_date === "object" && "month" in data.birth_date && "day" in data.birth_date) {
-        return `${data.birth_date.day}-${data.birth_date.month}`;
-      }
-    })()
+
+  static fromDatabaseObject(
+    data: Omit<Tables<"linkedin_contacts">, "created_at" | "user_id">,
+  ): LinkedinContact {
+
+    const {
+      addresses,
+      birthDate,
+      emailAddresses,
+      phoneNumbers,
+      websites,
+    } = parseExtendedData(data.extended_data);
 
     return new LinkedinContact({
       connectionId: data.connection_id,
@@ -245,21 +291,13 @@ export class LinkedinContact {
       headline: data.headline ?? undefined,
       fullName: data.full_name ?? undefined,
       profilePicture: data.profile_picture ?? undefined,
-      birthDate, 
-      phoneNumbers: parseJsonArray<LinkedInPhoneNumber>(data.phone_numbers),
-      emailAddresses: (data.email_address ?? []).map((e) => ({
-        emailAddress: e,
-      })),
-      // twitterHandles: parseJsonArray<LinkedInTwitterHandle>(
-      //   data.twitter_handles,
-      // ),
-      websites: parseJsonArray<{ url: string; type: string }>(
-        data.websites,
-      ).map((w) => ({
-        url: w.url,
-        type: w.type,
-      })),
       internalId: data.internal_id,
+
+      birthDate,
+      phoneNumbers,
+      addresses,
+      emailAddresses,
+      websites
     });
   }
 
@@ -292,8 +330,12 @@ export class LinkedinContact {
       fullName:
         `${element.connectedMemberResolutionResult?.firstName} ${element.connectedMemberResolutionResult?.lastName}`.toLowerCase(),
       profilePicture: pictureUrl,
-      birthDate: profile.birthDateOn ? `${profile.birthDateOn.month}-${profile.birthDateOn.day}` : undefined,
-      phoneNumbers: profile.phoneNumbers ?? [],
+
+      birthDate: profile.birthDateOn ? `${profile.birthDateOn.day}-${profile.birthDateOn.month}` : undefined,
+      phoneNumbers: profile.phoneNumbers?.map((p) => ({
+        type: p.type || "",
+        number: p.number,
+      })) || [],
       emailAddresses: [{emailAddress: profile.emailAddress ?? "", type: ""}],
       addresses: [], // LinkedIn API does not provide addresses in new endpoints
       websites: (profile.websites ?? []).map((w) => ({
@@ -307,11 +349,6 @@ export class LinkedinContact {
     Tables<"linkedin_contacts">,
     "user_id" | "created_at" | "internal_id"
   > {
-    function toJsonArray(val: unknown) {
-      if (!val) return null;
-      if (Array.isArray(val)) return val;
-      return [val];
-    }
     return {
       headline: this.#headline ?? null,
       entity_urn: this.#entityUrn,
@@ -322,12 +359,14 @@ export class LinkedinContact {
       public_identifier: this.#publicIdentifier,
       connection_id: this.#connectionId.replace("linkedin:", ""),
       last_synced: new Date().toISOString(),
-      birth_date: this.#birthDateOn ?? null,
-      phone_numbers: toJsonArray(this.#phoneNumbers),
-      email_address: this.#emailAddresses ? this.#emailAddresses.map(e => e.emailAddress) : null,
-      twitter_handles: toJsonArray(this.#twitterHandles),
-      addresses: toJsonArray(this.#addresses),
-      websites: toJsonArray(this.#websites),
+
+      extended_data: JSON.stringify({
+        birthDate: this.#birthDate,
+        phoneNumbers: this.#phoneNumbers,
+        emailAddresses: this.#emailAddresses,
+        addresses: this.#addresses,
+        websites: this.#websites,
+      })
     };
   }
 
@@ -341,7 +380,7 @@ export class LinkedinContact {
       publicIdentifier: this.#publicIdentifier,
       headline: this.#headline,
       profilePicture: this.#profilePicture,
-      birthDate: this.#birthDateOn ? `${this.#birthDateOn.month}-${this.#birthDateOn.day}` : undefined,
+      birthDate: this.#birthDate ? `${this.#birthDate.day}-${this.#birthDate.month}` : undefined,
       phoneNumbers: this.#phoneNumbers,
       emailAddresses: this.#emailAddresses ? this.#emailAddresses : [],
       addresses: this.#addresses,

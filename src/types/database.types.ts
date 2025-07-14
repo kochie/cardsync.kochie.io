@@ -457,64 +457,49 @@ export type Database = {
       }
       linkedin_contacts: {
         Row: {
-          addresses: Json[] | null
-          birth_date: Json | null
           connection_id: string
           created_at: string
-          email_address: string[] | null
           entity_urn: string
+          extended_data: Json | null
           first_name: string | null
           full_name: string | null
           headline: string | null
           internal_id: string
           last_name: string | null
           last_synced: string | null
-          phone_numbers: Json[] | null
           profile_picture: string | null
           public_identifier: string | null
-          twitter_handles: Json | null
           user_id: string | null
-          websites: Json[] | null
         }
         Insert: {
-          addresses?: Json[] | null
-          birth_date?: Json | null
           connection_id: string
           created_at?: string
-          email_address?: string[] | null
           entity_urn: string
+          extended_data?: Json | null
           first_name?: string | null
           full_name?: string | null
           headline?: string | null
           internal_id?: string
           last_name?: string | null
           last_synced?: string | null
-          phone_numbers?: Json[] | null
           profile_picture?: string | null
           public_identifier?: string | null
-          twitter_handles?: Json | null
           user_id?: string | null
-          websites?: Json[] | null
         }
         Update: {
-          addresses?: Json[] | null
-          birth_date?: Json | null
           connection_id?: string
           created_at?: string
-          email_address?: string[] | null
           entity_urn?: string
+          extended_data?: Json | null
           first_name?: string | null
           full_name?: string | null
           headline?: string | null
           internal_id?: string
           last_name?: string | null
           last_synced?: string | null
-          phone_numbers?: Json[] | null
           profile_picture?: string | null
           public_identifier?: string | null
-          twitter_handles?: Json | null
           user_id?: string | null
-          websites?: Json[] | null
         }
         Relationships: [
           {
