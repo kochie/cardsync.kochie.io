@@ -14,10 +14,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ContactSync",
+  title: {
+    template: "%s | ContactSync",
+    default: "ContactSync",
+  },
+  metadataBase: new URL("https://contactsync.kochie.io"),
   description: "Sync your contacts across platforms",
   alternates: {
-    canonical: "https://cardsync.kochie.io",
+    canonical: "/",
   },
 };
 

@@ -5,6 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCloud, faSync, faExclamationTriangle, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+}
 
 function providerIcon(provider: string) {
   switch (provider) {
