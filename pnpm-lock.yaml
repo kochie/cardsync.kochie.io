@@ -128,6 +128,9 @@ importers:
       eslint-config-next:
         specifier: 15.3.1
         version: 15.3.1(eslint@9.31.0(jiti@2.4.2))(typescript@5.8.3)
+      fathom-client:
+        specifier: ^3.7.2
+        version: 3.7.2
       framer-motion:
         specifier: ^12.16.0
         version: 12.23.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -1857,6 +1860,9 @@ packages:
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
+
+  fathom-client@3.7.2:
+    resolution: {integrity: sha512-sWtaNivhg7uwp/q1bUuIiNj4LeQZMEZ5NXXFFpZ8le4uDedAfQG84gPOdYehtVXbl+1yX2s8lmXZ2+IQ9a/xxA==}
 
   fdir@6.4.6:
     resolution: {integrity: sha512-hiFoqpyZcfNm1yc4u8oWCf9A2c4D3QjCrks3zmoVKVxpQRzmPNar1hUJcBG2RQHvEVGDN+Jm81ZheVLAQMK6+w==}
@@ -4833,6 +4839,8 @@ snapshots:
   fastq@1.19.1:
     dependencies:
       reusify: 1.1.0
+
+  fathom-client@3.7.2: {}
 
   fdir@6.4.6(picomatch@4.0.2):
     optionalDependencies:

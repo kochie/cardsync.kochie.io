@@ -47,6 +47,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { usePathname } from "next/navigation";
 import SupabaseAvatar from "../SupabaseAvatar";
+import { faGauge } from "@fortawesome/pro-solid-svg-icons";
 
 export default function SidebarProvider({
   children,
@@ -114,6 +115,10 @@ export default function SidebarProvider({
           </SidebarHeader>
           <SidebarBody>
             <SidebarSection>
+              <SidebarItem href="/dashboard" current={path === "/dashboard"}>
+               <FontAwesomeIcon fixedWidth icon={faGauge} />
+                <SidebarLabel>Overview</SidebarLabel>
+              </SidebarItem>
               <SidebarItem
                 href="/dashboard/contacts"
                 current={path.startsWith("/dashboard/contacts")}
