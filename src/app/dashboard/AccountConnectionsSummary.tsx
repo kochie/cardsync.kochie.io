@@ -33,7 +33,7 @@ export default async function AccountConnectionsSummary() {
   ]);
 
   const accounts = [
-    ...(linkedin || []).map((a: any) => ({
+    ...(linkedin || []).map((a) => ({
       id: a.id,
       provider: "linkedin",
       name: a.name,
@@ -41,7 +41,7 @@ export default async function AccountConnectionsSummary() {
       lastSynced: a.last_synced,
       contactCount: a.number_contacts,
     })),
-    ...(instagram || []).map((a: any) => ({
+    ...(instagram || []).map((a) => ({
       id: a.id,
       provider: "instagram",
       name: a.name,
@@ -50,7 +50,7 @@ export default async function AccountConnectionsSummary() {
       contactCount: a.follower_count,
       username: a.username,
     })),
-    ...(carddav || []).map((a: any) => ({
+    ...(carddav || []).map((a) => ({
       id: a.id,
       provider: "carddav",
       name: a.name,

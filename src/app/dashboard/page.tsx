@@ -1,9 +1,5 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCloud, faSync, faExclamationTriangle, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
-import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import { Suspense } from "react";
 import TotalContactsCount from "./TotalContactsCount";
 import { Metadata } from "next";
@@ -11,24 +7,6 @@ import AccountConnectionsSummary from "./AccountConnectionsSummary";
 
 export const metadata: Metadata = {
   title: "Dashboard",
-}
-
-function providerIcon(provider: string) {
-  switch (provider) {
-    case "linkedin": return <FontAwesomeIcon icon={faLinkedin} className="text-blue-600" />;
-    case "instagram": return <FontAwesomeIcon icon={faInstagram} className="text-pink-500" />;
-    case "carddav": return <FontAwesomeIcon icon={faCloud} className="text-purple-600" />;
-    default: return <FontAwesomeIcon icon={faExclamationTriangle} className="text-gray-400" />;
-  }
-}
-
-function statusBadge(status: string) {
-  switch (status) {
-    case "connected": return <Badge color="green"><FontAwesomeIcon icon={faCheckCircle} className="mr-1" />Connected</Badge>;
-    case "syncing": return <Badge color="blue"><FontAwesomeIcon icon={faSync} spin className="mr-1" />Syncing</Badge>;
-    case "error": return <Badge color="red"><FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />Error</Badge>;
-    default: return <Badge color="zinc">Unknown</Badge>;
-  }
 }
 
 export default async function Dashboard() {
