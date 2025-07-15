@@ -1,16 +1,23 @@
-'use client';
+"use client";
 
-import { load, trackPageview } from 'fathom-client';
-import { useEffect, Suspense } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { load, trackPageview } from "fathom-client";
+import { useEffect, Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 function TrackPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    load(process.env.NEXT_PUBLIC_FATHOM_ID, {
-      auto: false
+    const fathomId = process.env.NEXT_PUBLIC_FATHOM_ID;
+    if (!fathomId) {
+      console.warn(
+        "Fathom ID is not set. Skipping Fathom analytics initialization.",
+      );
+      return;
+    }
+    load(fathomId, {
+      auto: false,
     });
   }, []);
 
@@ -19,7 +26,7 @@ function TrackPageView() {
 
     trackPageview({
       url: pathname + searchParams?.toString(),
-      referrer: document.referrer
+      referrer: document.referrer,
     });
   }, [pathname, searchParams]);
 
